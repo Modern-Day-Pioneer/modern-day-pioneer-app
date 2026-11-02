@@ -1,13 +1,30 @@
 # Modern Day Pioneer
 
-The code for **Modern Day Pioneer** (working title), a Windows app for gathering a family's photos, recordings and stories and exporting them as a family history that opens in any web browser, with no internet and no special software. Website: [moderndaypioneer.org](https://moderndaypioneer.org). Windows installers are on this repository's [Releases](https://github.com/mbwamkali/modern-day-pioneer-app/releases) page.
+The code for **Modern Day Pioneer**, a Windows app for gathering a family's photos, recordings and stories and exporting them as a family history that opens in any web browser, with no internet and no special software. Website: [moderndaypioneer.org](https://moderndaypioneer.org). Windows installers are on this repository's [Releases](https://github.com/mbwamkali/modern-day-pioneer-app/releases) page.
 
 - `mdp-core/`: the Journey, catalog, import, export, backup and background jobs, as a Rust library with no screens. Run its checks with `cargo test` inside `mdp-core`.
 - `mdp-app/`: the Tauri 2 app (plain HTML and JavaScript screens in `mdp-app/ui`). See [mdp-app/README.md](mdp-app/README.md).
 
+## Building and releases
+
+How to build the app yourself is in [mdp-app/README.md](mdp-app/README.md). Public releases are built from this repository by the [Windows release](.github/workflows/windows-release.yml) GitHub Actions workflow, so each installer can be traced to the code here. Security problems: see [SECURITY.md](SECURITY.md).
+
+## Code signing policy
+
+Free code signing provided by [SignPath.io](https://about.signpath.io/), certificate by [SignPath Foundation](https://signpath.org/). (Signing starts once SignPath Foundation accepts the project; until then releases are unsigned.)
+
+- **What is signed:** only the Modern Day Pioneer app (`modern-day-pioneer.exe`) and its installer, built from this repository by the Windows release workflow. The bundled FFmpeg and PDFium files come unchanged from their own projects (see [NOTICE](NOTICE)) and are not signed by us.
+- **Team roles:**
+  - Authors (committers): [Jared Dickson](https://github.com/mbwamkali). Code is written with the help of an AI coding assistant; every change comes in as a pull request.
+  - Reviewers: [Jared Dickson](https://github.com/mbwamkali) reviews every pull request, including all outside contributions, before it is merged.
+  - Approvers: [Jared Dickson](https://github.com/mbwamkali) approves each signing request.
+- **Privacy:** the app sends nothing about you or your family anywhere. It goes online only when you ask it to (downloading a speech model, checking for an update, or sending feedback). See the [privacy policy](https://moderndaypioneer.org/privacy/).
+
 ## Project proposal
 
-### Summary*Modern Day Pioneer* is the working title of this project. It aims to help families preserve and tell their stories in a form the next generation can still open and use. A family gathers its photos, recordings, videos and stories in one application, connects them to the people and places they belong to, and produces a family history that anyone can open in a web browser, with no internet connection, no special software and no account. The aim is for it to stay usable for decades; no technology can guarantee that, so the design focuses on reducing the risks rather than claiming to remove them.
+### Summary
+
+*Modern Day Pioneer* aims to help families preserve and tell their stories in a form the next generation can still open and use. A family gathers its photos, recordings, videos and stories in one application, connects them to the people and places they belong to, and produces a family history that anyone can open in a web browser, with no internet connection, no special software and no account. The aim is for it to stay usable for decades; no technology can guarantee that, so the design focuses on reducing the risks rather than claiming to remove them.
 
 ### What we are doing
 

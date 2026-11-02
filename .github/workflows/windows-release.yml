@@ -1,0 +1,196 @@
+name: Windows release
+
+# Builds the Windows installer from this public repository, so anyone can check
+# that a release was made from the code shown here. When the SignPath settings
+# below are filled in, the app and its installer are code signed (see the
+# "Code signing policy" section of README.md); until then the build is unsigned.
+#
+# Run it by hand: Actions > Windows release > Run workflow, with the version
+# (for example 0.13.124) and "publish" ticked to put it on the Releases page.
+#
+# Repository settings used:
+# - secret RELEASES_TOKEN: lets the publish step create the release.
+# - variable SIGNPATH_ORGANIZATION_ID and secret SIGNPATH_API_TOKEN: turn signing on.
+# - variable SIGNPATH_PROJECT_SLUG (default modern-day-pioneer) and
+#   SIGNPATH_POLICY_SLUG (default release-signing).
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version, for example 0.13.124 (must be higher than the last release)"
+        required: true
+      publish:
+        description: "Publish this build on the Releases page"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    env:
+      SIGN: ${{ vars.SIGNPATH_ORGANIZATION_ID != '' }}
+      SP_PROJECT: ${{ vars.SIGNPATH_PROJECT_SLUG || 'modern-day-pioneer' }}
+      SP_POLICY: ${{ vars.SIGNPATH_POLICY_SLUG || 'release-signing' }}
+    defaults:
+      run:
+        working-directory: mdp-app
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check the version
+        shell: pwsh
+        run: |
+          if ("${{ inputs.version }}" -notmatch '^\d+\.\d+\.\d+$') { throw "The version must look like 0.13.124." }
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      # FFmpeg (LGPL build) ships beside the app for HEIC, HEVC and Opus copies.
+      - name: Get FFmpeg
+        shell: pwsh
+        run: |
+          $url = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n8.1-latest-win64-lgpl-8.1.zip"
+          Invoke-WebRequest -Uri $url -OutFile "$env:RUNNER_TEMP\ff.zip"
+          $hash = (Get-FileHash "$env:RUNNER_TEMP\ff.zip" -Algorithm SHA256).Hash
+          Expand-Archive "$env:RUNNER_TEMP\ff.zip" -DestinationPath "$env:RUNNER_TEMP\ff"
+          $dir = Get-ChildItem "$env:RUNNER_TEMP\ff" -Directory | Select-Object -First 1
+          New-Item -ItemType Directory -Force -Path src-tauri\ffmpeg | Out-Null
+          Copy-Item "$($dir.FullName)\bin\ffmpeg.exe" src-tauri\ffmpeg\
+          Copy-Item "$($dir.FullName)\LICENSE.txt" src-tauri\ffmpeg\
+          $ver = (& src-tauri\ffmpeg\ffmpeg.exe -version | Select-Object -First 1)
+          @(
+            "Modern Day Pioneer uses FFmpeg (https://ffmpeg.org), licensed under the LGPL version 2.1 or later (see ffmpeg-LICENSE.txt),",
+            "to make copies of HEIC pictures, HEVC and MOV videos and Opus and M4A recordings in formats every computer can open.",
+            "",
+            "Version: $ver",
+            "Build: $($dir.Name), from $url (SHA-256 of the archive: $hash)",
+            "Source code: https://github.com/FFmpeg/FFmpeg and the build scripts at https://github.com/BtbN/FFmpeg-Builds"
+          ) | Set-Content src-tauri\ffmpeg\README-ffmpeg.txt
+          Get-Content src-tauri\ffmpeg\README-ffmpeg.txt
+      # PDFium (BSD licence) ships beside the app to draw PDF pages for document copies.
+      - name: Get PDFium
+        shell: pwsh
+        run: |
+          $url = "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium%2F7881/pdfium-win-x64.tgz"
+          Invoke-WebRequest -Uri $url -OutFile "$env:RUNNER_TEMP\pdfium.tgz"
+          # The release is fixed, so its archive must never change.
+          $want = "73CC0DE638AC2095E7445BF56A38200A5B7C7CA0E9F4BA144598F2457377AC08"
+          $got = (Get-FileHash "$env:RUNNER_TEMP\pdfium.tgz" -Algorithm SHA256).Hash
+          if ($got -ne $want) { throw "PDFium archive changed: SHA-256 $got, expected $want" }
+          New-Item -ItemType Directory -Force -Path "$env:RUNNER_TEMP\pdfium", src-tauri\pdfium | Out-Null
+          tar xzf "$env:RUNNER_TEMP\pdfium.tgz" -C "$env:RUNNER_TEMP\pdfium"
+          Copy-Item "$env:RUNNER_TEMP\pdfium\bin\pdfium.dll" src-tauri\pdfium\
+          Copy-Item "$env:RUNNER_TEMP\pdfium\LICENSE" src-tauri\pdfium\LICENSE.txt
+      # whisper.cpp is compiled with the app; its bindings need LLVM's libclang,
+      # which the Windows runner already has. GGML_NATIVE=OFF stops it from being tuned to the
+      # runner's own processor (which can use instructions a home PC lacks); it then uses AVX2,
+      # which PCs from about 2015 on have.
+      - name: Point the whisper.cpp build at LLVM and a portable processor target
+        shell: pwsh
+        run: |
+          "LIBCLANG_PATH=C:\Program Files\LLVM\bin" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "GGML_NATIVE=OFF" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          # cmake-rs drops /O2 from the Release flags with the Microsoft compiler
+          # (rust-lang/cmake-rs#240), so whisper.cpp was built unoptimized and ran 6 to 12
+          # times slower than whisper-cli (2026-10-17). whisper-rs-sys passes CMAKE_*
+          # settings on to CMake, so the Release flags are given back here.
+          # -MT (not -MD) builds the C runtime in, to match the app's crt-static setting
+          # (src-tauri/.cargo/config.toml), so testers don't need the Visual C++ Redistributable.
+          "CMAKE_C_FLAGS_RELEASE=-nologo -MT -O2 -Ob2 -DNDEBUG" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "CMAKE_CXX_FLAGS_RELEASE=-nologo -MT -O2 -Ob2 -DNDEBUG -EHsc -utf-8" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Set the version
+        shell: pwsh
+        run: |
+          $version = "${{ inputs.version }}"
+          $conf = Get-Content src-tauri\tauri.ffmpeg.json -Raw | ConvertFrom-Json
+          $conf | Add-Member -NotePropertyName version -NotePropertyValue $version
+          $conf | ConvertTo-Json -Depth 10 | Set-Content src-tauri\tauri.ci.json
+          "MDP_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "MDP_BUILD=$($version.Split('.')[2])" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "MDP_COMMIT=$("${{ github.sha }}".Substring(0, 7))" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "MDP_BUILD_DATE=$(Get-Date -Format yyyy-MM-dd)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Build the app
+        run: |
+          npm ci
+          npx --no-install tauri build --no-bundle --config src-tauri/tauri.ci.json
+      # Signing, step 1: the app itself. Only our own program is signed; FFmpeg and
+      # PDFium are other projects' files and are shipped as they come.
+      - id: app-exe
+        if: env.SIGN == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: unsigned-app
+          path: mdp-app/src-tauri/target/release/modern-day-pioneer.exe
+      - if: env.SIGN == 'true'
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ env.SP_PROJECT }}
+          signing-policy-slug: ${{ env.SP_POLICY }}
+          github-artifact-id: ${{ steps.app-exe.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: mdp-app/src-tauri/target/release
+      - name: Make the installer
+        run: npx --no-install tauri bundle --config src-tauri/tauri.ci.json
+      # Fail the build if the app or a bundled tool still needs the Visual C++ Redistributable.
+      - name: Check nothing needs the Visual C++ runtime
+        shell: pwsh
+        run: |
+          $bad = @()
+          foreach ($f in "src-tauri\target\release\modern-day-pioneer.exe", "src-tauri\ffmpeg\ffmpeg.exe", "src-tauri\pdfium\pdfium.dll") {
+            $text = [System.Text.Encoding]::ASCII.GetString([System.IO.File]::ReadAllBytes($f))
+            $hits = [regex]::Matches($text, '(?i)(vcruntime1\d\d_?\d?|msvcp1\d\d(_\w+)?|concrt1\d\d)\.dll') | ForEach-Object { $_.Value } | Sort-Object -Unique
+            if ($hits) { $bad += "$f needs $($hits -join ', ')" } else { Write-Output "$f needs no Visual C++ runtime" }
+          }
+          if ($bad) { $bad | ForEach-Object { Write-Output "::error::$_" }; exit 1 }
+      # Signing, step 2: the installer.
+      - id: setup-exe
+        if: env.SIGN == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: unsigned-installer
+          path: mdp-app/src-tauri/target/release/bundle/nsis/*.exe
+      - if: env.SIGN == 'true'
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ env.SP_PROJECT }}
+          signing-policy-slug: ${{ env.SP_POLICY }}
+          github-artifact-id: ${{ steps.setup-exe.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: mdp-app/src-tauri/target/release/bundle/nsis
+      - uses: actions/upload-artifact@v7
+        with:
+          name: modern-day-pioneer-windows-${{ env.MDP_VERSION }}
+          path: mdp-app/src-tauri/target/release/bundle/nsis/*.exe
+          retention-days: 30
+      - name: Publish on the Releases page
+        if: ${{ inputs.publish && github.ref == 'refs/heads/main' }}
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+        run: |
+          if (-not $env:GH_TOKEN) { Write-Output "::error::The RELEASES_TOKEN secret is missing."; exit 1 }
+          $exe = Get-ChildItem src-tauri\target\release\bundle\nsis\*.exe | Select-Object -First 1
+          if ($env:SIGN -eq 'true') {
+            $howto = @("The app and installer are signed (free code signing provided by SignPath.io, certificate by SignPath Foundation).")
+          } else {
+            $howto = @("The app is not signed yet, so your browser and Windows ask you to confirm: in the blue",
+                       "'Windows protected your PC' box, choose 'More info', then 'Run anyway'.")
+          }
+          @(
+            "Modern Day Pioneer $env:MDP_VERSION for Windows 10 and 11 ($env:MDP_BUILD_DATE, commit $env:MDP_COMMIT), built by this repository's Windows release workflow.",
+            "",
+            "Download the setup file below and run it."
+          ) + $howto + @(
+            "Step-by-step instructions: https://moderndaypioneer.org/install/",
+            "",
+            "Installing over an older version keeps your Journeys; the app offers a backup the first time it opens one."
+          ) | Set-Content "$env:RUNNER_TEMP\notes.md"
+          gh release create "v$env:MDP_VERSION" "$($exe.FullName)" --repo ${{ github.repository }} --target ${{ github.sha }} --title "Modern Day Pioneer $env:MDP_VERSION" --notes-file "$env:RUNNER_TEMP\notes.md"
