@@ -193,4 +193,8 @@ jobs:
             "",
             "Installing over an older version keeps your Journeys; the app offers a backup the first time it opens one."
           ) | Set-Content "$env:RUNNER_TEMP\notes.md"
-          gh release create "v$env:MDP_VERSION" "$($exe.FullName)" --repo ${{ github.repository }} --target ${{ github.sha }} --title "Modern Day Pioneer $env:MDP_VERSION" --notes-file "$env:RUNNER_TEMP\notes.md"
+          # A copy with a name that never changes, so the website's Download button can link to
+          # releases/latest/download/Modern_Day_Pioneer_Setup.exe and start the download at once.
+          $fixed = Join-Path $env:RUNNER_TEMP "Modern_Day_Pioneer_Setup.exe"
+          Copy-Item $exe.FullName $fixed
+          gh release create "v$env:MDP_VERSION" "$($exe.FullName)" "$fixed" --repo ${{ github.repository }} --target ${{ github.sha }} --title "Modern Day Pioneer $env:MDP_VERSION" --notes-file "$env:RUNNER_TEMP\notes.md"
