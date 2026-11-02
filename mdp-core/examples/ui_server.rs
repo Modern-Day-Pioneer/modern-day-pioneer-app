@@ -180,7 +180,7 @@ fn call(j: &mut Journey, cmd: &str, a: &Value) -> Result<Value, String> {
         "search" => to(serde_json::to_value(j.search(&s(a, "text"), 20).map_err(e)?))?,
         "item" => to(serde_json::to_value(j.item(&s(a, "id")).map_err(e)?))?,
         "keep_awake" | "media_base" => Value::Null,
-        "about" => json!({"version": "0.5.0", "build": "Local build", "feedback": std::env::var("MDP_TEST_FEEDBACK").unwrap_or_default(), "releases": "https://github.com/mbwamkali/modern-day-pioneer-app/releases"}),
+        "about" => json!({"version": "0.5.0", "build": "Local build", "feedback": std::env::var("MDP_TEST_FEEDBACK").unwrap_or_default(), "releases": "https://github.com/Modern-Day-Pioneer/modern-day-pioneer-app/releases"}),
         "check_for_update" => Value::Null,
         "open_link" => Value::Null,
         "undo" => json!(j.undo().map_err(e)?),

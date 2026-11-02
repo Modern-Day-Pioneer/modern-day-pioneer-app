@@ -9,7 +9,7 @@ use tauri_plugin_opener::OpenerExt;
 use crate::{err, load_device, save_device, Res};
 
 /// The public code mirror; testers download from its Releases.
-pub const RELEASES_REPO: &str = "mbwamkali/modern-day-pioneer-app";
+pub const RELEASES_REPO: &str = "Modern-Day-Pioneer/modern-day-pioneer-app";
 /// Where "Send feedback" writes to. Empty hides the button.
 pub const FEEDBACK_EMAIL: &str = "mbwamkali@hotmail.com";
 

@@ -1,6 +1,6 @@
 # Modern Day Pioneer
 
-The code for **Modern Day Pioneer**, a Windows app for gathering a family's photos, recordings and stories and exporting them as a family history that opens in any web browser, with no internet and no special software. Website: [moderndaypioneer.org](https://moderndaypioneer.org). Windows installers are on this repository's [Releases](https://github.com/mbwamkali/modern-day-pioneer-app/releases) page.
+The code for **Modern Day Pioneer**, a Windows app for gathering a family's photos, recordings and stories and exporting them as a family history that opens in any web browser, with no internet and no special software. Website: [moderndaypioneer.org](https://moderndaypioneer.org). Windows installers are on this repository's [Releases](https://github.com/Modern-Day-Pioneer/modern-day-pioneer-app/releases) page.
 
 - `mdp-core/`: the Journey, catalog, import, export, backup and background jobs, as a Rust library with no screens. Run its checks with `cargo test` inside `mdp-core`.
 - `mdp-app/`: the Tauri 2 app (plain HTML and JavaScript screens in `mdp-app/ui`). See [mdp-app/README.md](mdp-app/README.md).

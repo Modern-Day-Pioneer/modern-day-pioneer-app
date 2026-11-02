@@ -7,7 +7,7 @@ The Rust side is in `src-tauri/`.
 ## Installing it
 
 Download the newest `x64-setup.exe` from this repository's
-[Releases](https://github.com/mbwamkali/modern-day-pioneer-app/releases) page
+[Releases](https://github.com/Modern-Day-Pioneer/modern-day-pioneer-app/releases) page
 and run it. It installs into your own user profile
 (`%LOCALAPPDATA%\Programs`), so it needs no administrator rights. The
 installer isn't signed yet, so Windows may say it is unrecognized: choose
