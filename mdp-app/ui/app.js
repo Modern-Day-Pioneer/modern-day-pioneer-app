@@ -1001,7 +1001,8 @@ $('#s-export-choose').addEventListener('click', async () => {
     return;
   }
   const dir = await dialog.open({ directory: true, title: 'Choose where exports go' });
-  if (dir) $('#s-export').value = dir;
+  // The export goes in a folder named after the Journey inside the place picked.
+  if (dir) { try { $('#s-export').value = await invoke('export_target_for', { chosen: dir }); } catch (e) { showError(e); } }
 });
 
 // ---------- Keyboard: Ctrl+F searches, Ctrl+Z undoes ----------

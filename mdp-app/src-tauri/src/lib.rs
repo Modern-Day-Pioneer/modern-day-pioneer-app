@@ -162,7 +162,7 @@ fn load_journey_settings(root: &Path) -> JourneySettings {
 }
 
 /// Where this Journey's export goes: the folder chosen in Settings, or
-/// Documents\Modern Day Pioneer\<name> export.
+/// Documents\Modern Day Pioneer\Exports\<name>.
 fn export_folder(app: &AppHandle, j: &Journey) -> Res<String> {
     let js = load_journey_settings(j.root());
     Ok(match js.export_folder {
@@ -171,9 +171,38 @@ fn export_folder(app: &AppHandle, j: &Journey) -> Res<String> {
     })
 }
 
-fn default_export_folder(app: &AppHandle, name: &str) -> String {
+/// A Journey name made safe as a Windows folder name.
+fn folder_name(name: &str) -> String {
     let clean: String = name.trim().chars().map(|c| if "<>:\"/\\|?*".contains(c) || c.is_control() { '-' } else { c }).collect();
-    documents(app).join("Modern Day Pioneer").join(format!("{} export", clean.trim_end_matches(['.', ' ']))).display().to_string()
+    let clean = clean.trim_end_matches(['.', ' ']).to_string();
+    if clean.is_empty() { "My Journey".into() } else { clean }
+}
+
+fn default_export_folder(app: &AppHandle, name: &str) -> String {
+    documents(app).join("Modern Day Pioneer").join("Exports").join(folder_name(name)).display().to_string()
+}
+
+/// The export goes into a folder named after the Journey inside the place
+/// chosen, so its files never land loose on a drive or in a busy folder. A
+/// folder that already holds an export, or already has the Journey's name,
+/// is used as it is, so earlier choices keep working.
+fn export_target(chosen: &str, name: &str) -> String {
+    let chosen = Path::new(chosen.trim());
+    let wanted = folder_name(name);
+    let named = chosen.file_name().is_some_and(|n| n.to_string_lossy().eq_ignore_ascii_case(&wanted));
+    if named || mdp_core::export::is_export(chosen) {
+        chosen.display().to_string()
+    } else {
+        chosen.join(wanted).display().to_string()
+    }
+}
+
+/// Settings: the export folder for a place just picked.
+#[tauri::command]
+fn export_target_for(state: State<Shared>, chosen: String) -> Res<String> {
+    let s = state.lock().map_err(err)?;
+    let j = s.journey.as_ref().ok_or("No Journey is open.")?;
+    Ok(export_target(&chosen, &j.name().map_err(err)?))
 }
 
 /// On the phone this is the app's own Documents folder on the phone's
@@ -741,7 +770,11 @@ fn save_settings(app: AppHandle, state: State<Shared>, settings: SettingsView) -
     if cfg!(mobile) {
         return std::fs::write(journey_settings_file(j.root()), serde_json::to_string_pretty(&js).map_err(err)?).map_err(err);
     }
-    js.export_folder = Some(settings.export_folder).filter(|f| !f.trim().is_empty() && *f != default_export);
+    let name = j.name().map_err(err)?;
+    js.export_folder = Some(settings.export_folder)
+        .filter(|f| !f.trim().is_empty())
+        .map(|f| export_target(&f, &name))
+        .filter(|f| *f != default_export);
     std::fs::write(journey_settings_file(j.root()), serde_json::to_string_pretty(&js).map_err(err)?).map_err(err)
 }
 
@@ -923,6 +956,7 @@ pub fn run() {
             save_settings,
             show_journey_folder,
             pick_export_copy,
+            export_target_for,
             people::choices,
             people::read_date,
             people::item_table,
@@ -1042,4 +1076,32 @@ pub fn run() {
                 }
             }
         });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn export_goes_in_a_folder_named_after_the_journey() {
+        let base = std::env::temp_dir().join("mdp-export-target-test");
+        let _ = std::fs::remove_dir_all(&base);
+        std::fs::create_dir_all(&base).unwrap();
+        let b = base.display().to_string();
+        let want = base.join("The Rowan Family").display().to_string();
+        // A place picked gets the Journey's folder inside it.
+        assert_eq!(export_target(&b, "The Rowan Family"), want);
+        // Saving again keeps it (the name is already there).
+        assert_eq!(export_target(&want, "The Rowan Family"), want);
+        // Names Windows refuses are made safe.
+        assert_eq!(export_target(&b, "Mom/Dad: 1960s?. "), base.join("Mom-Dad- 1960s-").display().to_string());
+        assert_eq!(folder_name("  "), "My Journey");
+        // A folder that already holds an export is used as it is.
+        let old = base.join("Family export");
+        std::fs::create_dir_all(&old).unwrap();
+        std::fs::write(old.join(mdp_core::export::ABOUT_FILE), "x").unwrap();
+        std::fs::write(old.join("catalog.json"), "{}").unwrap();
+        assert_eq!(export_target(&old.display().to_string(), "The Rowan Family"), old.display().to_string());
+        let _ = std::fs::remove_dir_all(&base);
+    }
 }
