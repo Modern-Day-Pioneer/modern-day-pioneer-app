@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Modern Day Pioneer</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<!-- First run: only the Journey's name is asked for. -->
+<div class="firstrun" id="firstrun" role="main" hidden>
+  <form class="box" id="create-form" novalidate>
+    <div>
+      <div class="eyebrow">Modern Day Pioneer</div>
+      <h1>What would you like to call this Journey?</h1>
+    </div>
+    <p class="quiet">A Journey holds your family's pictures, recordings and stories. You can change its name later.</p>
+    <div class="field">
+      <label for="journey-name">Journey name</label>
+      <input type="text" id="journey-name" autocomplete="off" placeholder="For example, The Rowan Family" required aria-describedby="where">
+    </div>
+    <p class="where" id="where" aria-live="polite"></p>
+    <p class="warn" id="where-warn" role="status" hidden></p>
+    <p class="error" id="create-error" role="alert" hidden></p>
+    <div class="btns">
+      <button class="btn primary" type="submit">Start the Journey</button>
+      <button class="btn desktop-only" type="button" id="choose-folder">Keep it somewhere else…</button>
+    </div>
+    <p class="quiet">Or <span class="desktop-only"><button class="link" type="button" id="open-existing">open a Journey you already have</button>, </span><button class="link" type="button" id="restore-first">restore a backup</button>, or <button class="link" type="button" id="open-sample">try the sample family</button>.</p>
+  </form>
+</div>
+
+<div class="app" id="app" hidden>
+  <nav class="side" aria-label="Main">
+    <div class="search" role="search">
+      <label for="q" class="vh">Search names and titles</label>
+      <input id="q" type="search" placeholder="Search names and titles" autocomplete="off"
+             role="combobox" aria-expanded="false" aria-controls="results" aria-autocomplete="list" title="Search (Ctrl+F)">
+      <div class="results" id="results" role="listbox" aria-label="Search results" hidden></div>
+    </div>
+    <button class="navbtn" data-go="home" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Home</button>
+    <button class="navbtn" data-go="stories"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5"/></svg>Stories &amp; Memories</button>
+    <button class="navbtn" data-go="people"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.6c2.7 0 4.8 1.6 5.5 4.4"/></svg>People</button>
+    <button class="navbtn" data-go="waiting"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 15l5-4 4 3 3-2 6 4"/></svg>Waiting<span class="badge" id="wbadge" hidden></span></button>
+    <button class="navbtn" data-go="preview"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>Preview</button>
+    <div class="spacer"></div>
+    <button class="navbtn" data-go="settings"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings</button>
+    <p class="version" id="side-version"></p>
+  </nav>
+
+  <main id="main" tabindex="-1">
+    <section class="pane" data-pane="home" aria-labelledby="journey-title">
+      <p class="readonly" id="readonly" hidden>This Journey was made by a newer version of the app, so it is open for reading only.</p>
+      <div class="journey">
+        <div>
+          <div class="eyebrow">Journey</div>
+          <h1 id="journey-title"></h1>
+          <p id="journey-intro"></p>
+          <button class="link" type="button" id="edit-journey">Change the title and introduction…</button>
+        </div>
+        <div class="counts" id="counts"></div>
+        <div class="actions">
+          <button class="action" id="home-story"><span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M12 7v6M9 10h6"/></svg></span><span><b>Start a story</b><span>Gather memories around an event, a person or a group.</span></span></button>
+          <button class="action" id="home-add"><span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5"/><path d="M4 18v2h16v-2"/></svg></span><span><b>Add photos and recordings</b><span><span class="desktop-only">Copy them in from this PC.</span><span class="phone-only">Copy them in from this phone.</span> Your originals stay untouched.</span></span></button>
+          <button class="action" id="home-people"><span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="8" r="3.5"/><path d="M3.5 20c.8-3.6 3.4-5.5 6.5-5.5 1.6 0 3 .5 4.1 1.4"/><path d="M18 14v6M15 17h6"/></svg></span><span><b>Add an individual</b><span>A person or a pet, grouped into families if you like.</span></span></button>
+          <button class="action" id="home-record"><span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></span><span><b>Record a voice</b><span>Opens the large recording screen. The recording waits until it goes into a memory.</span></span></button>
+        </div>
+        <p class="quiet" id="voice-job" role="status" hidden></p>
+      </div>
+
+      <div class="cols">
+        <div class="panel">
+          <header><h2 class="h3like">Waiting for a memory</h2><span class="count" id="wcount"></span><button class="link" data-go="waiting">See all</button></header>
+          <p class="empty" id="waiting-empty">Nothing is waiting. Pictures and recordings you bring in will wait here until they go into a memory.</p>
+          <ul class="todo" id="waiting-short" hidden></ul>
+          <button class="link" type="button" data-go="waiting" id="waiting-more" hidden></button>
+        </div>
+        <div class="panel">
+          <header><h2 class="h3like">Memories to finish</h2></header>
+          <ul class="todo" id="to-finish"></ul>
+          <p class="empty" id="to-finish-empty" hidden>Every memory has something in it.</p>
+          <p class="empty" id="to-finish-none" hidden>No memories yet. Make one from a waiting picture or recording, or start a story.</p>
+          <button class="link" type="button" data-go="stories" id="to-finish-more" hidden></button>
+          <div class="panel" id="featured-panel">
+            <header><h2 class="h3like">Featured</h2></header>
+            <ul class="todo" id="featured"></ul>
+          </div>
+          <div class="previewcard">
+            <div class="shot" aria-hidden="true"><ul class="shelf-mini" id="shelf-mini" hidden></ul><p class="quiet" id="shelf-empty">Stories with something in them appear here as books.</p></div>
+            <div class="foot"><span class="quiet" style="flex:1">See the history as it will be exported.</span><button class="btn primary" data-go="preview">Preview</button></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="pane" data-pane="stories" aria-labelledby="h-stories" hidden>
+      <div><h1 id="h-stories">Stories &amp; Memories</h1><p class="lede">Each story gathers memories around one event, person or group, and becomes a book on the shelf in the exported history. Open a story to see its memories.</p></div>
+      <div class="row add-row">
+        <button class="btn primary" type="button" id="new-story">New story…</button>
+        <button class="btn" type="button" id="new-memory">New memory…</button>
+      </div>
+      <form class="row filters" id="memory-tools" aria-label="Find and sort memories">
+        <div class="field"><label for="mf-sort">Show</label>
+          <select id="mf-sort"><option value="story">By story</option><option value="name">All memories, by title</option>
+            <option value="date">All memories, by memory date</option><option value="added">All memories, newest added first</option></select></div>
+        <div class="field"><label for="mf-text">Title has</label><input id="mf-text" type="search" autocomplete="off"></div>
+        <div class="field"><label for="mf-person">Person or pet</label><select id="mf-person"><option value="">Anyone</option></select></div>
+        <div class="field"><label for="mf-story">Story</label><select id="mf-story"><option value="">Any story</option><option value="-">Not in a story</option></select></div>
+        <label class="switch" for="mf-needs"><input type="checkbox" id="mf-needs">Needs content</label>
+      </form>
+      <section class="section" id="memory-results" aria-labelledby="h-results" hidden>
+        <h2 id="h-results">Memories</h2>
+        <p class="quiet" id="results-count" aria-live="polite"></p>
+        <ul class="todo" id="results-list"></ul>
+      </section>
+      <div class="groups" id="story-list"></div>
+      <p class="empty" id="stories-empty" hidden>No stories yet. A story gathers memories, in order, around an event, a person or a group.</p>
+      <section class="section" aria-labelledby="h-loose">
+        <h2 id="h-loose">Assorted memories</h2>
+        <p class="quiet">Memories in no story. The Journey has <span id="all-memories-count"></span> in all.</p>
+        <div id="loose-memories"></div>
+      </section>
+    </section>
+
+    <section class="pane" data-pane="people" aria-labelledby="h-people" hidden>
+      <div><h1 id="h-people">People</h1><p class="lede">People and pets, by family. Someone can be in several families or none.</p></div>
+      <div class="row add-row">
+        <button class="btn primary" type="button" id="add-person-btn">Add an individual…</button>
+        <button class="btn" type="button" id="new-family">New family…</button>
+        <button class="btn" type="button" data-go="places">Places and events</button>
+      </div>
+      <div class="row chosen" id="chosen-bar" hidden>
+        <span id="chosen-count" aria-live="polite"></span>
+        <div class="field"><label for="choose-family">Family</label><select id="choose-family"><option value="">Choose a family</option></select></div>
+        <button class="btn primary" type="button" id="add-chosen">Add to family</button>
+        <button class="btn" type="button" id="clear-chosen">Clear</button>
+      </div>
+      <p class="quiet">Tick people and choose Add to family, or drag them onto a family. Choose a family's name to see its people, stories and memories.</p>
+      <div class="famsplit" id="famsplit"><div id="family-list" class="fam"></div>
+        <aside class="famsum" id="family-summary" aria-labelledby="h-famsum" hidden></aside></div>
+      <p class="empty" id="people-empty" hidden>No one yet. Use "Add an individual" to add the first person or pet.</p>
+    </section>
+
+    <!-- Sprint 3 screens; their contents are drawn by people.js. -->
+    <section class="pane detail" data-pane="person" aria-labelledby="h-person" hidden><div class="sheet" id="person-body"></div></section>
+    <section class="pane detail" data-pane="family" aria-labelledby="h-family" hidden><div class="sheet" id="family-body"></div></section>
+    <section class="pane" data-pane="places" aria-labelledby="h-places" hidden><div class="sheet" id="places-body"></div></section>
+    <section class="pane detail" data-pane="place" aria-labelledby="h-place" hidden><div class="sheet" id="place-body"></div></section>
+    <section class="pane detail" data-pane="event" aria-labelledby="h-event" hidden><div class="sheet" id="event-body"></div></section>
+    <!-- Sprint 4 screens; their contents are drawn by memories.js. -->
+    <section class="pane detail" data-pane="story" aria-labelledby="h-story" hidden><div class="sheet" id="story-body"></div></section>
+    <section class="pane detail" data-pane="memory" aria-labelledby="h-memory" hidden><div class="sheet" id="memory-body"></div></section>
+
+    <section class="pane" data-pane="waiting" aria-labelledby="h-waiting" hidden>
+      <div><h1 id="h-waiting">Waiting</h1><p class="lede">Pictures and recordings that are not in a memory yet. They are kept, but left out of the export until they are.</p></div>
+      <div class="row add-row">
+        <div class="menuwrap">
+          <button class="btn primary" type="button" id="add-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="add-menu">Add photos and recordings ▾</button>
+          <div class="menu" id="add-menu" role="menu" hidden>
+            <button type="button" role="menuitem" id="add-media" class="phone-only">Choose photos and videos…</button>
+            <button type="button" role="menuitem" id="add-files">Choose files…</button>
+            <button type="button" role="menuitem" id="add-folder" class="desktop-only">Choose a folder (with its subfolders)…</button>
+            <button type="button" role="menuitem" id="add-zips" class="desktop-only">Bring in from Google Photos…</button>
+            <button type="button" role="menuitem" id="add-bulk" class="desktop-only">Bring in a folder with a preview, an import plan or an exported history…</button>
+          </div>
+        </div>
+        <span class="hint desktop-only">Or drag files and folders onto this window. Folders bring in everything inside them, subfolders too. Your originals are copied, never changed.</span>
+      </div>
+      <div class="job" id="job" role="status" aria-live="polite" hidden>
+        <p id="job-msg"></p>
+        <progress id="job-bar" max="1" value="0" aria-label="Progress"></progress>
+        <button class="btn" type="button" id="job-cancel">Cancel</button>
+      </div>
+      <div class="job done" id="job-done" hidden>
+        <p id="job-done-msg" role="status"></p>
+        <details id="job-skipped" hidden><summary id="job-skipped-sum"></summary><ul id="job-skipped-list"></ul></details>
+        <button class="link" type="button" id="job-dismiss">Dismiss</button>
+      </div>
+      <p class="warn" id="missing-note" hidden></p>
+      <div class="tabs" role="group" aria-label="Show">
+        <button class="tab" type="button" data-state="waiting" aria-pressed="true">Waiting <span id="n-waiting"></span></button>
+        <button class="tab" type="button" data-state="groups" aria-pressed="false">Suggested groups <span id="n-groups"></span></button>
+        <button class="tab" type="button" data-state="set aside" aria-pressed="false">Set aside <span id="n-aside"></span></button>
+      </div>
+      <form class="row filters" id="waiting-tools" aria-label="Find and sort waiting items">
+        <div class="field"><label for="wf-sort">Show</label>
+          <select id="wf-sort"><option value="new">Newest added first</option><option value="old">Oldest added first</option>
+            <option value="name">By name</option><option value="date">By date taken</option></select></div>
+        <div class="field"><label for="wf-text">Name has</label><input id="wf-text" type="search" autocomplete="off"></div>
+        <div class="field"><label for="wf-kind">Kind</label><select id="wf-kind"><option value="">Any kind</option>
+          <option value="picture">Pictures</option><option value="voice recording">Recordings</option><option value="video">Videos</option><option value="text">Text</option></select></div>
+        <label class="switch" for="wf-nodate"><input type="checkbox" id="wf-nodate">No date yet</label>
+      </form>
+      <p class="quiet" id="waiting-count" aria-live="polite" hidden></p>
+      <div class="selbar" id="sel-bar" role="group" aria-label="With the selected items">
+        <span id="sel-count">Select items to put them into a memory together. Click an item to see it large.</span>
+        <button class="btn primary" type="button" id="sel-memory" disabled>Put into a memory…</button>
+        <button class="btn" type="button" id="sel-person" disabled>Assign to an individual…</button>
+        <div class="menuwrap">
+          <button class="btn" type="button" id="sel-more" aria-haspopup="menu" aria-expanded="false" aria-controls="sel-menu" disabled>More ▾</button>
+          <div class="menu right" id="sel-menu" role="menu" hidden>
+            <button type="button" role="menuitem" id="sel-aside">Set aside</button>
+            <button type="button" role="menuitem" id="sel-remove">Remove from Journey…</button>
+          </div>
+        </div>
+      </div>
+      <label class="switch selall" for="sel-all"><input type="checkbox" id="sel-all"> Select all</label>
+      <ul class="raw" id="waiting-list" aria-labelledby="h-waiting"></ul>
+      <p class="empty" id="waiting-list-empty">Nothing is waiting. Pictures and recordings you bring in wait here until they go into a memory.</p>
+      <div id="group-list" hidden></div>
+    </section>
+
+    <!-- Sprint 11: bulk folder import, import plans and exported histories; drawn by bulk.js. -->
+    <section class="pane" data-pane="bulk" aria-labelledby="h-bulk" hidden>
+      <div><h1 id="h-bulk">Bring in a folder</h1>
+        <p class="lede">Choose a folder of pictures and recordings that is already sorted. The app guesses each file's date, title, people and place from the folder and file names; check them, fix anything, then bring the files in. Zip files are read as they are, without unzipping: choose the zips themselves (for a Google Takeout, all its parts at once), or a folder holding them. A history this app exported can be brought back in the same way, which also joins two Journeys together. Your originals are copied, never changed.</p></div>
+      <div class="row">
+        <button class="btn primary" type="button" id="bulk-pick">Choose a folder…</button>
+        <button class="btn" type="button" id="bulk-zips">Choose zip files…</button>
+        <button class="btn" type="button" id="bulk-open">Open an import plan…</button>
+        <button class="btn" type="button" id="bulk-sample">Save a blank sample plan…</button>
+      </div>
+      <div class="job" id="bulk-job" role="status" aria-live="polite" hidden>
+        <p id="bulk-job-msg">Looking through the folder…</p>
+        <progress id="bulk-bar" max="1" value="0" aria-label="Progress"></progress>
+        <button class="btn" type="button" id="bulk-cancel">Cancel</button>
+      </div>
+      <div id="bulk-plan" hidden>
+        <p id="bulk-from"></p>
+        <div class="row">
+          <label class="switch" for="bulk-story"><input type="checkbox" id="bulk-story">Put each folder's memories into a story named after the folder</label>
+          <label class="switch" for="bulk-photo" id="bulk-photo-wrap"><input type="checkbox" id="bulk-photo">Use the photo's own date ahead of dates in names (looks through the folder again)</label>
+        </div>
+        <div class="row" role="group" aria-label="Memories">
+          <span class="quiet" id="bulk-count"></span>
+          <button class="btn" type="button" id="bulk-groups">Use suggested groups</button>
+          <button class="btn" type="button" id="bulk-by-folder">One memory per folder</button>
+          <button class="btn" type="button" id="bulk-each">Each file its own memory</button>
+          <button class="btn" type="button" id="bulk-save">Save as import plan…</button>
+        </div>
+        <p class="quiet">Rows with the same text under Memory become one memory with that title. Names in People and Place are only suggestions; separate people with a semicolon (;).</p>
+        <section class="bulk-names" id="bulk-names" aria-labelledby="h-bulk-names" hidden>
+          <h2 id="h-bulk-names" class="h3like">Names found</h2>
+          <p class="quiet">Each name in People, once. Say who a name is and it counts for every file that has it.</p>
+          <ul class="lines" id="bulk-names-todo"></ul>
+          <details id="bulk-names-done-wrap"><summary id="bulk-names-done-sum"></summary><ul class="lines" id="bulk-names-done"></ul></details>
+        </section>
+        <section class="bulk-names" id="bulk-places" aria-labelledby="h-bulk-places" hidden>
+          <h2 id="h-bulk-places" class="h3like">Places found</h2>
+          <p class="quiet">Google's locations, with photos taken within a kilometer of each other together. Say what a place is and it counts for every file there.</p>
+          <label class="switch" for="bulk-towns"><input type="checkbox" id="bulk-towns" checked>Suggest the nearest town (from a list of towns built into the app; nothing is sent online)</label>
+          <p class="hint">Town names from GeoNames (geonames.org), shared under Creative Commons Attribution 4.0.</p>
+          <ul class="lines" id="bulk-places-todo"></ul>
+          <details id="bulk-places-done-wrap"><summary id="bulk-places-done-sum"></summary><ul class="lines" id="bulk-places-done"></ul></details>
+        </section>
+        <details id="bulk-skipped" hidden><summary id="bulk-skipped-sum"></summary><ul id="bulk-skipped-list"></ul></details>
+        <div class="bulk-wrap">
+          <table class="bulk-table">
+            <thead><tr><th scope="col"><input type="checkbox" id="bulk-all" aria-label="Bring in every file" checked></th><th scope="col">File</th><th scope="col">Title</th><th scope="col">Date</th><th scope="col">People</th><th scope="col">Place</th><th scope="col">Memory</th></tr></thead>
+            <tbody id="bulk-rows"></tbody>
+          </table>
+        </div>
+        <button class="link" type="button" id="bulk-more" hidden></button>
+        <div class="row bulk-go">
+          <label class="switch" for="bulk-add"><input type="checkbox" id="bulk-add">Add people and places that are not in this Journey yet</label>
+          <button class="btn primary" type="button" id="bulk-go">Bring in</button>
+        </div>
+      </div>
+      <div id="bulk-export" hidden>
+        <p id="bulk-ex-sum"></p>
+        <p class="quiet">Untick anything you don't want. A memory brings its pictures and recordings with it; links to people, places or stories that are left out are left out too. Where a person, place or family has the same name as one already here, choose whether to use that one (so nothing is doubled) or bring it in as a new one.</p>
+        <div id="bulk-ex-groups"></div>
+        <div class="row bulk-go"><button class="btn primary" type="button" id="bulk-ex-go">Bring it all in</button></div>
+      </div>
+    </section>
+    <section class="pane" data-pane="preview" aria-labelledby="h-preview" hidden>
+      <div><h1 id="h-preview">Preview</h1><p class="lede">See the history exactly as it will be exported, then export it: a folder that opens in any web browser, with no internet and no app.</p></div>
+      <p class="pv-note" id="pv-note" role="status"></p>
+      <div class="row">
+        <button class="btn primary" type="button" id="pv-open">Open the preview</button>
+        <button class="btn desktop-only" type="button" id="pv-browser">Open it in my browser</button>
+      </div>
+      <h2>Export</h2>
+      <p>The export goes to <b id="ex-folder"></b>. <button class="link desktop-only" type="button" data-go="settings">Change the folder in Settings</button></p>
+      <p class="quiet">Pictures, recordings and texts are copied with their title, date and people written inside them. A new export replaces the previous one only once it is complete.</p>
+      <div class="row"><button class="btn primary" type="button" id="ex-start">Export the history</button></div>
+      <div class="job" id="ex-job" role="status" aria-live="polite" hidden>
+        <p id="ex-msg"></p>
+        <progress id="ex-bar" max="1" value="0" aria-label="Export progress"></progress>
+        <button class="btn" type="button" id="ex-cancel">Cancel</button>
+      </div>
+      <div class="job done" id="ex-done" hidden>
+        <p id="ex-done-msg" role="status"></p>
+        <details id="ex-skipped" hidden><summary id="ex-skipped-sum"></summary><ul id="ex-skipped-list"></ul></details>
+        <div class="row" id="ex-done-actions">
+          <button class="btn primary desktop-only" type="button" id="ex-open">Open the export</button>
+          <button class="btn desktop-only" type="button" id="ex-show">Show the folder</button>
+          <button class="link" type="button" id="ex-dismiss">Dismiss</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="pane detail" data-pane="item" aria-labelledby="h-item" hidden>
+      <div><button class="link" id="back">← Back</button></div>
+      <div><h1 id="h-item"></h1><p class="lede" id="item-kind"></p></div>
+      <dl id="item-fields"></dl>
+      <p class="quiet">Screens for changing this come in later sprints. These are the details the Journey holds today.</p>
+    </section>
+
+    <section class="pane" data-pane="settings" aria-labelledby="h-settings" hidden>
+      <div><h1 id="h-settings">Settings</h1></div>
+      <form class="settings" id="settings-form">
+        <div class="field"><label for="s-author">Your name on this device (shown in the change history)</label><input id="s-author" autocomplete="name"></div>
+        <div class="field"><label for="s-living">Living people in the export</label>
+          <select id="s-living"><option value="leave out">Leave out details of living people</option><option value="include">Include everything</option></select></div>
+        <div class="field"><label for="s-places">Exact places in the export</label>
+          <select id="s-places"><option value="town only">Show town only for places marked exact, such as the family home</option><option value="exact">Show exact places</option></select></div>
+        <div class="field"><label for="s-front">Front door of the export</label>
+          <select id="s-front" aria-describedby="s-front-h"><option value="bookshelf">Bookshelf: each story is a book on a shelf</option><option value="coffee table">Coffee table: stories as magazines with a cover picture</option></select>
+          <p class="hint" id="s-front-h">The first page of the exported history. The plain lists are always one link away.</p></div>
+        <section class="field wide speech" aria-labelledby="h-speech"><h2 id="h-speech" class="h3like">Speech to text</h2>
+          <div id="speech"><p class="quiet">Looking for the speech model…</p></div></section>
+        <div class="field"><label for="s-folder">Journey folder</label>
+          <div class="row"><input id="s-folder" readonly><button class="btn desktop-only" type="button" id="show-folder">Show in File Explorer</button></div>
+          <p class="warn" id="s-folder-warn" hidden></p>
+          <div class="row"><button class="btn desktop-only" type="button" id="s-open">Open another Journey…</button><button class="btn" type="button" id="s-new">Start a new Journey…</button></div></div>
+        <div class="field"><label for="s-export">Export folder</label>
+          <div class="row"><input id="s-export" readonly><button class="btn" type="button" id="s-export-choose">Change…</button></div></div>
+        <label class="switch" for="s-tips"><input type="checkbox" id="s-tips"> Show "could add" suggestions in this Journey</label>
+        <div class="btns"><button class="btn primary" type="submit">Save settings</button></div>
+      </form>
+      <section class="about backup" aria-labelledby="h-backup">
+        <h2 id="h-backup" class="h3like">Back up and restore</h2>
+        <p>A backup is one .zip file holding the whole Journey: every picture, recording and note, and the catalog. Keep it on a USB drive or another computer. It opens with any zip tool, and Restore puts it back as a Journey.</p>
+        <p class="quiet" id="bk-last"></p>
+        <div class="row"><button class="btn primary" type="button" id="bk-start">Back up this Journey…</button><button class="btn" type="button" id="bk-restore">Restore a backup…</button></div>
+        <div class="job" id="bk-job" role="status" aria-live="polite" hidden>
+          <p id="bk-msg"></p>
+          <progress id="bk-bar" max="1" value="0" aria-label="Backup progress"></progress>
+          <button class="btn" type="button" id="bk-cancel">Cancel</button>
+        </div>
+        <div class="job done" id="bk-done" hidden>
+          <p id="bk-done-msg" role="status"></p>
+          <div class="row"><button class="btn primary" type="button" id="bk-open" hidden>Open the restored Journey</button><button class="btn desktop-only" type="button" id="bk-show" hidden>Show the backup</button><button class="link" type="button" id="bk-dismiss">Dismiss</button></div>
+        </div>
+      </section>
+      <section class="about" aria-labelledby="h-about">
+        <h2 id="h-about" class="h3like">About this app</h2>
+        <p id="about-text"></p>
+        <div class="row"><button class="btn" type="button" id="copy-version">Copy version</button><button class="btn desktop-only" type="button" id="open-logs">Open the log folder</button><button class="btn" type="button" id="send-feedback" hidden>Send feedback…</button><button class="btn" type="button" id="check-update">Check for a newer version</button></div>
+        <p class="quiet" id="update-note" aria-live="polite"></p>
+      </section>
+    </section>
+  </main>
+</div>
+
+<!-- Add an individual (person or pet) or a family (sprint 3 testing feedback: the button asks for the name). -->
+<dialog class="ask" id="add-dialog" aria-labelledby="add-dialog-h">
+  <form method="dialog" id="add-dialog-form" novalidate>
+    <h2 id="add-dialog-h">Add an individual</h2>
+    <div class="field"><label for="add-name" id="add-name-label">Name</label>
+      <input id="add-name" autocomplete="off" aria-describedby="add-name-hint">
+      <p class="hint" id="add-name-hint">You can add dates, family and everything else on the next screen.</p></div>
+    <fieldset id="add-kind"><legend>This individual is a</legend>
+      <label class="switch"><input type="radio" name="add-kind" value="person" checked> Person</label>
+      <label class="switch"><input type="radio" name="add-kind" value="pet"> Pet</label></fieldset>
+    <p class="error" id="add-error" role="alert" hidden></p>
+    <div class="btns"><button class="btn primary" type="submit" value="add">Add</button><button class="btn" type="button" id="add-cancel">Cancel</button></div>
+  </form>
+</dialog>
+
+<!-- Bring in from Google Photos: the steps, then the zip files are chosen. -->
+<dialog class="ask" id="takeout-dialog" aria-labelledby="takeout-h">
+  <form method="dialog" novalidate>
+    <h2 id="takeout-h">Bring in from Google Photos</h2>
+    <ol class="steps">
+      <li>Ask Google for a copy of your photos. On the Google Takeout page, choose "Deselect all", tick only Google Photos, and choose .zip files.
+        <br><button class="btn" type="button" id="takeout-open">Open Google Takeout</button></li>
+      <li>When Google emails you, download every part into one folder. Don't unzip them.</li>
+      <li>Choose all the zip files. The app reads them where they are, pairs each photo with its dates and places, and shows a preview before anything comes in.</li>
+    </ol>
+    <p class="hint">Already unzipped them? Choose "Bring in a folder with a preview…" and pick the folder that holds the parts.</p>
+    <div class="btns"><button class="btn primary" type="button" id="takeout-choose">Choose the zip files…</button><button class="btn" type="submit" value="cancel">Close</button></div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+<!-- The phone has no second window, so the preview opens over the screen (sprint 9). -->
+<div class="phone-preview" id="phone-preview" hidden>
+  <div class="bar"><b>Preview of the export</b><button class="btn" type="button" id="phone-preview-close">Close</button></div>
+  <iframe id="phone-preview-frame" title="Preview of the export"></iframe>
+</div>
+<script src="app.js"></script>
+<script src="people.js"></script>
+<script src="memories.js"></script>
+<script src="voice.js"></script>
+<script src="export.js"></script>
+<script src="backup.js"></script>
+<script src="bulk.js"></script>
+</body>
+</html>

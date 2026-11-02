@@ -1,0 +1,5 @@
+# Build the Microsoft C runtime into the Windows app, so a PC without the
+# Visual C++ Redistributable can still run it (a tester's install failed, 2026-10-29).
+# The installer installs per user without admin, so it can't run vc_redist itself.
+[target.'cfg(all(windows, target_env = "msvc"))']
+rustflags = ["-C", "target-feature=+crt-static"]

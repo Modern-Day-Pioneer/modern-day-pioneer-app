@@ -1,0 +1,11 @@
+{
+  "bundle": {
+    "resources": {
+      "ffmpeg/ffmpeg.exe": "ffmpeg.exe",
+      "ffmpeg/LICENSE.txt": "ffmpeg-LICENSE.txt",
+      "ffmpeg/README-ffmpeg.txt": "README-ffmpeg.txt",
+      "pdfium/pdfium.dll": "pdfium.dll",
+      "pdfium/LICENSE.txt": "pdfium-LICENSE.txt"
+    }
+  }
+}

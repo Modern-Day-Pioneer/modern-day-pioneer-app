@@ -1,0 +1,119 @@
+{
+ "@context": {
+  "@vocab": "https://schema.org/",
+  "schema": "https://schema.org/",
+  "mdp": "https://moderndaypioneer.org/ns#",
+  "mdpid": "urn:mdp:item:",
+  "Journey": "mdp:Journey",
+  "Memory": "mdp:Memory",
+  "Pet": "mdp:Pet",
+  "Family": "mdp:Family",
+  "Relationship": "mdp:Relationship",
+  "from": {
+   "@id": "mdp:from",
+   "@type": "@id"
+  },
+  "to": {
+   "@id": "mdp:to",
+   "@type": "@id"
+  },
+  "focus": {
+   "@id": "mdp:focus",
+   "@type": "@id"
+  },
+  "event": {
+   "@id": "mdp:event",
+   "@type": "@id"
+  },
+  "image": {
+   "@id": "schema:image",
+   "@type": "@id"
+  },
+  "cover": {
+   "@id": "mdp:cover",
+   "@type": "@id"
+  },
+  "individual": {
+   "@id": "mdp:individual",
+   "@type": "@id"
+  },
+  "member": {
+   "@id": "mdp:member",
+   "@type": "@id"
+  },
+  "relatedFamily": {
+   "@id": "mdp:relatedFamily",
+   "@type": "@id"
+  },
+  "transcriptOf": {
+   "@id": "mdp:transcriptOf",
+   "@type": "@id"
+  },
+  "stillFrameOf": {
+   "@id": "mdp:stillFrameOf",
+   "@type": "@id"
+  },
+  "featured": {
+   "@id": "mdp:featured",
+   "@type": "@id"
+  },
+  "memories": {
+   "@id": "schema:hasPart",
+   "@type": "@id",
+   "@container": "@list"
+  },
+  "contents": {
+   "@id": "schema:hasPart",
+   "@type": "@id",
+   "@container": "@list"
+  },
+  "contentLocation": {
+   "@type": "@id"
+  },
+  "location": {
+   "@type": "@id"
+  },
+  "attendee": {
+   "@type": "@id",
+   "@container": "@set"
+  },
+  "formatVersion": "mdp:formatVersion",
+  "birthDateEdtf": "mdp:birthDateEdtf",
+  "deathDateEdtf": "mdp:deathDateEdtf",
+  "joinedDate": "mdp:joinedDate",
+  "species": "mdp:species",
+  "breed": "mdp:breed",
+  "kind": "mdp:kind",
+  "qualifier": "mdp:qualifier",
+  "certainty": "mdp:certainty",
+  "sourceNote": "mdp:sourceNote",
+  "startEdtf": "mdp:startEdtf",
+  "endEdtf": "mdp:endEdtf",
+  "dateEdtf": "mdp:dateEdtf",
+  "status": "mdp:status",
+  "people": "mdp:people",
+  "role": "mdp:role",
+  "roleNote": "mdp:roleNote",
+  "peopleNote": "mdp:peopleNote",
+  "gpsLatitude": "mdp:gpsLatitude",
+  "gpsLongitude": "mdp:gpsLongitude",
+  "camera": "mdp:camera",
+  "speakerNote": "mdp:speakerNote",
+  "transcribedBy": "mdp:transcribedBy",
+  "reviewStatus": "mdp:reviewStatus",
+  "dateAdded": "mdp:dateAdded",
+  "addedBy": "mdp:addedBy",
+  "copy": "mdp:copy",
+  "originalName": "mdp:originalName",
+  "living": "mdp:living",
+  "memoryNotes": {
+   "@id": "mdp:memoryNotes",
+   "@container": "@list"
+  },
+  "memory": {
+   "@id": "mdp:memory",
+   "@type": "@id"
+  },
+  "note": "mdp:note"
+ }
+}

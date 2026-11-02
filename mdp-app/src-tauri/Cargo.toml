@@ -1,0 +1,33 @@
+[package]
+name = "modern-day-pioneer"
+version = "0.1.0"
+description = "Modern Day Pioneer: gather a family's pictures, voices and stories into a history that lasts"
+edition = "2021"
+
+[lib]
+name = "mdp_app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+mdp-core = { path = "../../mdp-core" }
+tauri = { version = "2", features = ["protocol-asset"] }
+tauri-plugin-opener = "2"
+tauri-plugin-dialog = "2"
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "gif", "webp"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+base64 = "0.22"
+whisper-rs = "0.16"
+cpal = "0.16"
+ureq = "2"
+sha2 = "0.10"
+sysinfo = "0.39.6"
+chrono = "0.4"
+tiny_http = "0.12"
+symphonia = { version = "0.5", default-features = false, features = ["wav", "pcm", "mp3", "aac", "isomp4", "flac", "ogg", "vorbis", "adpcm"] }
+
+[profile.dev.package."*"]
+opt-level = 3

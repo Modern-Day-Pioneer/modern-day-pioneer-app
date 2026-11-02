@@ -1,0 +1,6 @@
+Sample media for the sample family.
+
+camera-on-tripod.jpg  Person filming with a camera on a tripod. Photo by Lav Varshney. CC0. From scikit-image sample data (camera.png).
+tabby-cat.jpg         Tabby cat named Chelsea. Photo by Stefan van der Walt. CC0. From scikit-image sample data (chelsea.png).
+cup-of-coffee.jpg     Cup of coffee, courtesy of Pikolo Espresso Bar. Photo by Rachel Michetti. CC0. From scikit-image sample data (coffee.png).
+kennedy-inaugural-1961-excerpt.mp3  John F. Kennedy, inaugural address, 20 January 1961, 11-second excerpt. Public domain (U.S. federal government work). From whisper.cpp samples/jfk.wav.

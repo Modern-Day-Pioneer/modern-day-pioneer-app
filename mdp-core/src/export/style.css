@@ -1,0 +1,84 @@
+/* Modern Day Pioneer export. System fonts and plain CSS only; nothing is fetched online. */
+:root{--paper:#f6f2ea;--sheet:#fffdf8;--ink:#231f1a;--muted:#6b6358;--rule:#e2d9cb;--accent:#7a4a22;--wood:#8a5a32;--wood-d:#5e3b1f;
+--b0:#2f5d4a;--b1:#7b3b2f;--b2:#34495e;--b3:#6e5414;--b4:#5b3a5e;--b5:#3e5f73;--spine:#f6f1e7;
+--display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;--body:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--paper:#171512;--sheet:#201d19;--ink:#ece6dc;--muted:#a79e91;--rule:#36312a;--accent:#e0a96d;--wood:#6b4527;--wood-d:#45291a;color-scheme:dark}}
+:root[data-theme="dark"]{--paper:#171512;--sheet:#201d19;--ink:#ece6dc;--muted:#a79e91;--rule:#36312a;--accent:#e0a96d;--wood:#6b4527;--wood-d:#45291a;color-scheme:dark}
+*{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:17px/1.6 var(--body)}
+a{color:var(--accent);text-underline-offset:2px}a:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+img,video{max-width:100%;height:auto;display:block}audio{width:100%}
+.skip{position:absolute;left:-999px}.skip:focus{left:16px;top:8px;background:var(--sheet);padding:4px 8px;z-index:9}
+.top{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 20px;padding:12px 16px;border-bottom:1px solid var(--rule);background:var(--sheet)}
+.brand{font:600 1.2rem var(--display);color:var(--ink);text-decoration:none}
+.top nav{display:flex;flex-wrap:wrap;gap:2px 14px;font-size:.92rem}.top nav a{color:var(--muted);text-decoration:none}
+.top nav a[aria-current]{color:var(--accent);text-decoration:underline}
+main{max-width:60rem;margin:0 auto;padding:24px 16px 48px}
+h1,h2,h3{font-family:var(--display);line-height:1.2;font-weight:600}h1{font-size:clamp(1.8rem,5vw,2.6rem);margin:.2em 0 .3em}
+h2{font-size:1.35rem;margin:2rem 0 .6rem}h3,.memory header h2{font-size:1.3rem;margin:0}
+.lede{font-size:1.1rem;max-width:40em}.muted{color:var(--muted)}.small{font-size:.88rem}.meta{color:var(--muted);margin:.2rem 0}
+.kicker{font-size:.8rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0}
+.plain{list-style:none;padding:0}.plain li{padding:.35rem 0;border-bottom:1px solid var(--rule)}
+.cards{list-style:none;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,15rem),1fr));gap:10px}
+.mem-card{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column}
+.role{font-size:.85rem;color:var(--muted)}
+.memory{background:var(--sheet);border:1px solid var(--rule);border-radius:14px;padding:20px;margin:20px 0}
+.caption{font-size:1.05rem}.people{list-style:none;padding:0;display:flex;flex-wrap:wrap;gap:6px 18px;margin:.4rem 0 1rem}
+.contents{display:grid;gap:18px}figure{margin:0}figcaption{display:flex;flex-direction:column;gap:2px;margin-top:8px;font-size:.92rem}
+.credit,.note{margin:0;color:var(--muted);font-size:.84rem}.c-pic img{border-radius:8px;max-height:70vh;width:auto}
+.c-doc .pages{display:grid;gap:.75rem}.c-doc .pages img{width:100%;height:auto;border:1px solid var(--rule);border-radius:4px;background:#fff}
+.c-text .prose p,.transcript p{white-space:pre-line}.c-text .prose{font-family:var(--display);font-size:1.12rem;max-width:36em}
+.transcript{margin-top:10px;border-left:3px solid var(--rule);padding-left:12px}.transcript summary{cursor:pointer;font-weight:600}
+.family{margin-bottom:1.5rem}
+/* the bookshelf */
+.bookcase{background:linear-gradient(var(--wood-d),var(--wood));padding:12px;border-radius:10px;margin:20px 0}
+.shelf{background:color-mix(in srgb,var(--paper) 88%,#000);margin-bottom:12px;border-radius:4px}
+.shelf h2{font:600 .75rem var(--body);letter-spacing:.1em;text-transform:uppercase;color:var(--ink);margin:0;padding:10px 12px 0}
+.row{display:flex;align-items:flex-end;gap:4px;padding:12px 12px 0;overflow-x:auto;min-height:14rem}
+.plank{height:12px;background:linear-gradient(var(--wood),var(--wood-d))}
+.book{flex:0 0 auto;width:3.2rem;height:13rem;background:var(--c);color:var(--spine);text-decoration:none;border-radius:3px 3px 0 0;
+ display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:10px 0;writing-mode:vertical-rl;
+ box-shadow:inset 3px 0 6px rgba(255,255,255,.15),inset -4px 0 8px rgba(0,0,0,.3);transition:transform .15s}
+.book:nth-child(3n){height:11.5rem}.book:nth-child(4n+1){height:12.4rem}
+.book .t{font:600 .95rem var(--display);max-height:75%;overflow:hidden}.book .s{font-size:.7rem}
+.book.face{writing-mode:horizontal-tb;width:9.5rem;height:13.5rem;align-items:flex-start;padding:14px;border-radius:3px}
+.book.face .t{font-size:1.1rem}.book:hover,.book:focus-visible{transform:translateY(-8px)}
+@media (prefers-reduced-motion:reduce){.book{transition:none}}
+/* a story is a book: each memory is a page that fills the screen */
+.reader main{max-width:none;padding:0}
+.leaf{max-width:52rem;margin:0 auto;padding:28px 16px;border-bottom:1px dashed var(--rule)}
+.leaf .memory{border:0;background:none;padding:0;margin:0}
+.leaf.cover{display:grid;gap:24px;align-content:center}.leaf.cover img{max-height:55vh;width:auto;border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.folio{text-align:center;color:var(--muted);font-size:.85rem}
+@media (min-width:760px){.leaf{min-height:calc(100vh - 60px)}html:has(body.reader){scroll-snap-type:y proximity}.leaf{scroll-snap-align:start}.leaf.cover{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:center}}
+.foot{max-width:60rem;margin:0 auto;padding:16px;color:var(--muted);font-size:.8rem;border-top:1px solid var(--rule)}
+@media print{.top,.foot{display:none}.leaf{min-height:0;page-break-after:always}}
+/* the timeline (no script) */
+.timeline{list-style:none;padding:0;margin:0;border-left:3px solid var(--rule)}
+.timeline li{display:grid;grid-template-columns:minmax(7rem,11rem) minmax(0,1fr);gap:4px 14px;padding:.45rem 0 .45rem 14px;border-bottom:1px solid var(--rule)}
+.timeline .when{color:var(--muted);font-size:.92rem}.kind{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-right:4px}
+@media (max-width:520px){.timeline li{grid-template-columns:minmax(0,1fr)}}
+/* the preview's note (only in the app's preview, never in an export) */
+.pv-banner{background:var(--sheet);border:1px solid var(--accent);border-radius:10px;padding:10px 14px;margin:0 0 16px;font-size:.92rem}
+.reader .pv-banner{max-width:52rem;margin:16px auto}
+.portrait{float:right;width:160px;height:160px;object-fit:cover;border-radius:50%;margin:0 0 12px 16px}.face{display:inline-block;width:32px;height:32px;object-fit:cover;border-radius:50%;vertical-align:middle;margin-right:8px}
+/* the coffee table (sprint 13): magazines scattered on wood; straight in a grid on phones */
+.coffee-table{list-style:none;margin:20px 0;padding:28px 20px;background:radial-gradient(ellipse at 30% 20%,var(--wood),var(--wood-d));border-radius:24px;
+ display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,13rem),1fr));gap:22px}
+.mag a{display:flex;flex-direction:column;gap:6px;height:100%;min-height:16rem;padding:12px;background:var(--sheet);color:var(--ink);text-decoration:none;
+ border-top:10px solid var(--c);border-radius:4px;box-shadow:0 6px 16px rgba(0,0,0,.35);transform:rotate(var(--r));transition:transform .15s}
+.mag a:hover,.mag a:focus-visible{transform:rotate(0) translateY(-6px)}
+.mag .k{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.mag .t{font:600 1.25rem/1.15 var(--display)}.mag .s{font-size:.82rem;color:var(--muted);margin-top:auto}
+.mag .pic img{width:100%;height:9rem;object-fit:cover;border-radius:2px}
+@media (max-width:760px){.mag a{transform:none}.coffee-table{padding:16px;gap:14px}}
+@media (prefers-reduced-motion:reduce){.mag a{transition:none}}
+/* "In memory of" pages (sprint 13) */
+.tribute-link{font-weight:600}
+.tribute-item{margin:28px 0}.tribute-item .memory{margin-top:8px}
+.why{border-left:4px solid var(--accent);padding:4px 0 4px 14px;font-family:var(--display);font-size:1.12rem;max-width:40em}.why p{margin:.3em 0}
+/* search (sprint 13) */
+.find label{display:block;font-weight:600;margin-bottom:6px}.find div{display:flex;gap:8px;flex-wrap:wrap}
+.find input{flex:1 1 14rem;font:inherit;padding:8px 10px;border:1px solid var(--muted);border-radius:8px;background:var(--sheet);color:var(--ink)}
+.find button{font:inherit;padding:8px 16px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:var(--sheet);cursor:pointer}
+.results .snip{display:block;font-size:.88rem}

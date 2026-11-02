@@ -1,0 +1,3 @@
+target/
+mdp-app/src-tauri/ffmpeg/
+mdp-app/src-tauri/tauri.ci.json

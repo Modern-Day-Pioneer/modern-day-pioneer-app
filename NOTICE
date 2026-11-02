@@ -1,0 +1,22 @@
+Modern Day Pioneer
+Copyright 2026 Jared Dickson and the Modern Day Pioneer contributors
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+The Windows installer also includes these separately licensed parts:
+
+- FFmpeg (https://ffmpeg.org), a build under the GNU Lesser General Public
+  License 2.1 or later, from https://github.com/BtbN/FFmpeg-Builds. It is
+  shipped as its own program (ffmpeg.exe), unchanged.
+- PDFium (https://pdfium.googlesource.com/pdfium/), BSD-style license, from
+  https://github.com/bblanchon/pdfium-binaries.
+- whisper.cpp (https://github.com/ggml-org/whisper.cpp), MIT License, built
+  into the app for speech to text. Speech models are downloaded by the user
+  from Hugging Face and are not part of this product.
+- Town names from GeoNames (https://www.geonames.org), Creative Commons
+  Attribution 4.0 (mdp-core/data/towns.zip).
+- Sample family media (mdp-core/sample-media), CC0 or public domain; see
+  mdp-core/sample-media/CREDITS.txt.
+
+Other libraries the app is built from keep their own licenses, listed in
+mdp-core/Cargo.lock, mdp-app/src-tauri/Cargo.lock and mdp-app/package-lock.json.
