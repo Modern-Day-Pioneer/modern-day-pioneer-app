@@ -83,8 +83,8 @@ pub async fn check_for_update(app: AppHandle, daily: bool) -> Res<Option<Update>
     }))
 }
 
-/// Google's page for asking for a Takeout (the "Bring in from Google Photos" steps).
-pub const TAKEOUT_PAGE: &str = "https://takeout.google.com/";
+/// Google's page for asking for a Takeout with only Google Photos selected (the "Bring in from Google Photos" steps).
+pub const TAKEOUT_PAGE: &str = "https://takeout.google.com/settings/takeout/custom/photos";
 
 /// Open the releases page, Google Takeout or a feedback email; nothing else.
 #[tauri::command]

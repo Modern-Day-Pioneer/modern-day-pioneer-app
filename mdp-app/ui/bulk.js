@@ -301,7 +301,7 @@ $('#bulk-photo').addEventListener('change', () => { if ((bulk.folder || bulk.zip
 $('#bulk-pick').addEventListener('click', bulkPick);
 $('#bulk-zips').addEventListener('click', bulkPickZips);
 $('#add-zips').addEventListener('click', () => { closeAddMenu(false); $('#takeout-dialog').showModal(); });
-$('#takeout-open').addEventListener('click', () => invoke('open_link', { url: 'https://takeout.google.com/' }).catch(showError));
+$('#takeout-open').addEventListener('click', () => invoke('open_link', { url: 'https://takeout.google.com/settings/takeout/custom/photos' }).catch(showError));
 $('#takeout-choose').addEventListener('click', () => { $('#takeout-dialog').close(); go('bulk'); bulkPickZips(); });
 $('#bulk-cancel').addEventListener('click', () => { invoke('cancel_scan'); $('#bulk-job').hidden = true; clearInterval(scanPolling); });
 
