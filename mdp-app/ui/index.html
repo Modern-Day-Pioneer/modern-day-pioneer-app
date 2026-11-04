@@ -47,6 +47,7 @@
     <button class="navbtn" data-go="preview"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>Preview</button>
     <div class="spacer"></div>
     <button class="navbtn" data-go="settings"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings</button>
+    <button class="navbtn desktop-only" type="button" id="help-open" aria-haspopup="dialog"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5V14"/><path d="M12 17.2v.1"/></svg>Help</button>
     <p class="version" id="side-version"></p>
   </nav>
 
@@ -55,7 +56,7 @@
       <p class="readonly" id="readonly" hidden>This Journey was made by a newer version of the app, so it is open for reading only.</p>
       <div class="journey">
         <div>
-          <div class="eyebrow">Journey</div>
+          <div class="eyebrow">Journey <button class="term" type="button" data-term="journey" aria-label="What is a Journey?" title="What is a Journey?">?</button></div>
           <h1 id="journey-title"></h1>
           <p id="journey-intro"></p>
           <button class="link" type="button" id="edit-journey">Change the title and introduction…</button>
@@ -68,6 +69,20 @@
           <button class="action" id="home-record"><span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></span><span><b>Record a voice</b><span>Opens the large recording screen. The recording waits until it goes into a memory.</span></span></button>
         </div>
         <p class="quiet" id="voice-job" role="status" hidden></p>
+      </div>
+
+      <!-- Getting started (sprint 14): ticks itself off from
+           what is in the Journey; hidden per Journey on this computer. -->
+      <div class="getting" id="getting" hidden>
+        <div class="gs-list" id="getting-list">
+          <header><h2 class="h3like" id="getting-h">Getting started</h2><span class="count" id="getting-count"></span><button class="link" type="button" id="getting-hide">Hide this</button></header>
+          <ol class="gs-steps" id="getting-steps" aria-labelledby="getting-h"></ol>
+        </div>
+        <div class="gs-done" id="getting-done" hidden>
+          <p><b>All five done. You&rsquo;re on your way.</b></p>
+          <p>You&rsquo;ve added a person, brought in photos, made a memory, added it to a story and previewed your history. Help has more for when you&rsquo;re ready.</p>
+          <div class="btns"><button class="btn primary" type="button" id="getting-gotit">Got it</button><button class="link" type="button" id="getting-help">Open Help</button></div>
+        </div>
       </div>
 
       <div class="cols">
@@ -96,7 +111,7 @@
     </section>
 
     <section class="pane" data-pane="stories" aria-labelledby="h-stories" hidden>
-      <div><h1 id="h-stories">Stories &amp; Memories</h1><p class="lede">Each story gathers memories around one event, person or group, and becomes a book on the shelf in the exported history. Open a story to see its memories.</p></div>
+      <div><h1 id="h-stories">Stories &amp; Memories <button class="term" type="button" data-term="story" aria-label="What is the difference between a memory and a story?" title="What is the difference between a memory and a story?">?</button></h1><p class="lede">Each story gathers memories around one event, person or group, and becomes a book on the shelf in the exported history. Open a story to see its memories.</p></div>
       <div class="row add-row">
         <button class="btn primary" type="button" id="new-story">New story…</button>
         <button class="btn" type="button" id="new-memory">New memory…</button>
@@ -154,7 +169,7 @@
     <section class="pane detail" data-pane="memory" aria-labelledby="h-memory" hidden><div class="sheet" id="memory-body"></div></section>
 
     <section class="pane" data-pane="waiting" aria-labelledby="h-waiting" hidden>
-      <div><h1 id="h-waiting">Waiting</h1><p class="lede">Pictures and recordings that are not in a memory yet. They are kept, but left out of the export until they are.</p></div>
+      <div><h1 id="h-waiting">Waiting <button class="term" type="button" data-term="waiting" aria-label="What is Waiting?" title="What is Waiting?">?</button></h1><p class="lede">Pictures and recordings that are not in a memory yet. They are kept, but left out of the export until they are.</p></div>
       <div class="row add-row">
         <div class="menuwrap">
           <button class="btn primary" type="button" id="add-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="add-menu">Add photos and recordings ▾</button>
@@ -386,6 +401,31 @@
   </form>
 </dialog>
 
+<!-- A word new to people, in one or two sentences (sprint 14). -->
+<dialog class="ask" id="term-dialog" aria-labelledby="term-h">
+  <form method="dialog" novalidate>
+    <h2 id="term-h"></h2>
+    <p id="term-text"></p>
+    <div class="btns"><button class="btn" type="button" id="term-more">More in Help</button><button class="btn primary" type="submit" value="cancel">Got it</button></div>
+  </form>
+</dialog>
+
+<!-- Help (sprint 14): pages live on the website. -->
+<dialog class="ask" id="help-dialog" aria-labelledby="help-h">
+  <form method="dialog" novalidate>
+    <h2 id="help-h">Help</h2>
+    <ul class="help-links">
+      <li><button class="link" type="button" data-help="">Getting started and how-to pages</button></li>
+      <li><button class="link" type="button" data-help="videos/">Videos</button></li>
+      <li><button class="link" type="button" data-site="faq/">Questions people ask</button></li>
+      <li><button class="link" type="button" id="help-feedback">Send feedback</button></li>
+    </ul>
+    <p><button class="btn" type="button" id="help-getting">Show the getting-started card again</button></p>
+    <p class="hint" id="help-where">Pages open in your web browser, at moderndaypioneer.org/help.</p>
+    <div class="btns"><button class="btn" type="submit" value="cancel">Close</button></div>
+  </form>
+</dialog>
+
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 <!-- The phone has no second window, so the preview opens over the screen (sprint 9). -->
 <div class="phone-preview" id="phone-preview" hidden>
@@ -399,5 +439,6 @@
 <script src="export.js"></script>
 <script src="backup.js"></script>
 <script src="bulk.js"></script>
+<script src="help.js"></script>
 </body>
 </html>

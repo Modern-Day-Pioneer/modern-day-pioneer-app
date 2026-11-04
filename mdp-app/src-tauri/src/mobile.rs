@@ -440,29 +440,30 @@ fn media_type(path: &Path) -> &'static str {
 /// (the phone): read with the Symphonia library, which knows the phone's own
 /// WAV recordings and the usual voice memo kinds (M4A, MP3, Ogg, FLAC).
 pub fn samples_16k(file: &Path) -> Result<Vec<f32>, String> {
-    use symphonia::core::{audio::SampleBuffer, codecs::DecoderOptions, errors::Error, formats::FormatOptions, io::MediaSourceStream, meta::MetadataOptions, probe::Hint};
+    use symphonia::core::{codecs::audio::AudioDecoderOptions, errors::Error, formats::{probe::Hint, FormatOptions, TrackType}, io::MediaSourceStream, meta::MetadataOptions};
     let unreadable = |e: &dyn std::fmt::Display| format!("The recording could not be read ({e}).");
     let src = std::fs::File::open(file).map_err(|e| unreadable(&e))?;
     let mut hint = Hint::new();
     if let Some(ext) = file.extension().and_then(|e| e.to_str()) {
         hint.with_extension(ext);
     }
-    let probed = symphonia::default::get_probe()
-        .format(&hint, MediaSourceStream::new(Box::new(src), Default::default()), &FormatOptions::default(), &MetadataOptions::default())
+    let mut format = symphonia::default::get_probe()
+        .probe(&hint, MediaSourceStream::new(Box::new(src), Default::default()), FormatOptions::default(), MetadataOptions::default())
         .map_err(|e| unreadable(&e))?;
-    let mut format = probed.format;
-    let track = format.default_track().ok_or("The recording has no sound in it.")?;
+    let track = format.default_track(TrackType::Audio).ok_or("The recording has no sound in it.")?;
     let track_id = track.id;
-    let mut decoder = symphonia::default::get_codecs().make(&track.codec_params, &DecoderOptions::default()).map_err(|e| unreadable(&e))?;
-    let (mut mono, mut rate) = (Vec::new(), 0u32);
+    let params = track.codec_params.as_ref().and_then(|p| p.audio()).ok_or("The recording has no sound in it.")?;
+    let mut decoder = symphonia::default::get_codecs().make_audio_decoder(params, &AudioDecoderOptions::default()).map_err(|e| unreadable(&e))?;
+    let (mut mono, mut rate, mut buf) = (Vec::new(), 0u32, Vec::<f32>::new());
     loop {
         let packet = match format.next_packet() {
-            Ok(p) => p,
+            Ok(Some(p)) => p,
+            Ok(None) => break,
             Err(Error::IoError(e)) if e.kind() == std::io::ErrorKind::UnexpectedEof => break,
             Err(Error::ResetRequired) => break,
             Err(e) => return Err(unreadable(&e)),
         };
-        if packet.track_id() != track_id {
+        if packet.track_id != track_id {
             continue;
         }
         let audio = match decoder.decode(&packet) {
@@ -471,12 +472,10 @@ pub fn samples_16k(file: &Path) -> Result<Vec<f32>, String> {
             Err(Error::DecodeError(_)) => continue,
             Err(e) => return Err(unreadable(&e)),
         };
-        let spec = *audio.spec();
-        rate = spec.rate;
-        let channels = spec.channels.count().max(1);
-        let mut buf = SampleBuffer::<f32>::new(audio.capacity() as u64, spec);
-        buf.copy_interleaved_ref(audio);
-        mono.extend(buf.samples().chunks_exact(channels).map(|c| c.iter().sum::<f32>() / channels as f32));
+        rate = audio.spec().rate();
+        let channels = audio.spec().channels().count().max(1);
+        audio.copy_to_vec_interleaved(&mut buf);
+        mono.extend(buf.chunks_exact(channels).map(|c| c.iter().sum::<f32>() / channels as f32));
     }
     if rate == 0 {
         return Err("The recording has no sound in it.".into());
@@ -525,6 +524,57 @@ mod tests {
         assert_eq!(sniff(b"RIFF\0\0\0\0WAVEfmt "), "wav");
         assert_eq!(sniff(b"Grandma's story"), "txt");
         assert_eq!(sniff(b""), "bin");
+    }
+
+    /// The phone's recording reader (Symphonia) on a plain WAV, plus the
+    /// voice memo kinds when FFmpeg is on this computer to make them.
+    #[test]
+    fn reads_recordings_without_ffmpeg() {
+        let dir = std::env::temp_dir().join(format!("mdp-sym-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        // One second of a stereo 44.1 kHz tone, 16-bit.
+        let (rate, frames) = (44_100u32, 44_100u32);
+        let mut wav = Vec::new();
+        let data_len = frames * 4;
+        for (tag, n) in [(&b"RIFF"[..], 36 + data_len)] {
+            wav.extend_from_slice(tag);
+            wav.extend_from_slice(&n.to_le_bytes());
+        }
+        wav.extend_from_slice(b"WAVEfmt ");
+        wav.extend_from_slice(&16u32.to_le_bytes());
+        wav.extend_from_slice(&1u16.to_le_bytes());
+        wav.extend_from_slice(&2u16.to_le_bytes());
+        wav.extend_from_slice(&rate.to_le_bytes());
+        wav.extend_from_slice(&(rate * 4).to_le_bytes());
+        wav.extend_from_slice(&4u16.to_le_bytes());
+        wav.extend_from_slice(&16u16.to_le_bytes());
+        wav.extend_from_slice(b"data");
+        wav.extend_from_slice(&data_len.to_le_bytes());
+        for i in 0..frames {
+            let v = ((i as f32 * 440.0 * std::f32::consts::TAU / rate as f32).sin() * 12_000.0) as i16;
+            wav.extend_from_slice(&v.to_le_bytes());
+            wav.extend_from_slice(&v.to_le_bytes());
+        }
+        let wav_path = dir.join("tone.wav");
+        std::fs::write(&wav_path, &wav).unwrap();
+        let mut files = vec![wav_path.clone()];
+        let ffmpeg = std::env::var("MDP_FFMPEG").unwrap_or_else(|_| "ffmpeg".into());
+        for ext in ["mp3", "m4a", "ogg", "flac"] {
+            let out = dir.join(format!("tone.{ext}"));
+            let made = std::process::Command::new(&ffmpeg).args(["-loglevel", "error", "-y", "-i"]).arg(&wav_path).arg(&out).status();
+            if made.map(|s| s.success()).unwrap_or(false) {
+                files.push(out);
+            }
+        }
+        for f in &files {
+            let samples = samples_16k(f).unwrap_or_else(|e| panic!("{}: {e}", f.display()));
+            // About one second at 16 kHz (encoders may pad a little).
+            assert!((15_000..=17_500).contains(&samples.len()), "{}: {} samples", f.display(), samples.len());
+            let loud = samples.iter().fold(0f32, |m, s| m.max(s.abs()));
+            assert!(loud > 0.2, "{}: too quiet ({loud})", f.display());
+        }
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

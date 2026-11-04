@@ -148,6 +148,7 @@ function go(pane, { push = true, focus = true, id = null } = {}) {
     if (b.dataset.go === section) b.setAttribute('aria-current', 'page');
     else b.removeAttribute('aria-current');
   }
+  if (pane === 'preview') markPreviewed(); // a getting-started step (help.js)
   const loaders = { home: loadHome, people: loadPeople, waiting: loadWaiting, settings: loadSettings, ...extraLoaders };
   const done = loaders[pane] ? loaders[pane](id).catch(showError) : Promise.resolve();
   if (pane !== 'home' && pane !== 'waiting') refreshBadge();
@@ -324,6 +325,7 @@ function renderHome(h) {
     i < nf - 1 ? el('button', { class: 'btn', type: 'button', onclick: () => moveFeatured(f.id, 1) }, 'Down', el('span', { class: 'sr' }, ` ${f.name}`)) : null)));
   $('#featured-panel').hidden = h.featured.length === 0;
   homeWaiting().catch(() => {});
+  renderGetting(h);
   if (h.to_finish.length + could.length + nf) fillCoverSlots($('#featured').closest('[data-pane]')).catch(() => {});
 }
 

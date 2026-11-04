@@ -39,6 +39,30 @@ pub fn newer(latest: &str, current: &str) -> bool {
     !a.is_empty() && a > b
 }
 
+/// The web client for the update check and the model download: the
+/// computer's own trusted certificates on the desktop, built-in ones on the phone.
+pub fn web() -> ureq::Agent {
+    use ureq::tls::{RootCerts, TlsConfig};
+    let roots = if cfg!(target_os = "android") { RootCerts::WebPki } else { RootCerts::PlatformVerifier };
+    ureq::Agent::config_builder().tls_config(TlsConfig::builder().root_certs(roots).build()).build().new_agent()
+}
+
+/// The newest public release, or None while there is none (a 404).
+fn latest_release() -> Result<Option<Latest>, String> {
+    let resp = web().get(&format!("https://api.github.com/repos/{RELEASES_REPO}/releases/latest"))
+        .header("User-Agent", "ModernDayPioneer")
+        .header("Accept", "application/vnd.github+json")
+        .config()
+        .timeout_global(Some(std::time::Duration::from_secs(10)))
+        .build()
+        .call();
+    match resp {
+        Ok(r) => serde_json::from_reader(r.into_body().into_reader()).map(Some).map_err(err),
+        Err(ureq::Error::StatusCode(404)) => Ok(None),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
 /// Ask the releases page for the newest version. `daily`: at most once a
 /// day (the check on opening); the button in Settings always asks.
 #[tauri::command]
@@ -59,19 +83,13 @@ pub async fn check_for_update(app: AppHandle, daily: bool) -> Res<Option<Update>
         Ok(())
     };
     let current = app.package_info().version.to_string();
-    let resp = ureq::get(&format!("https://api.github.com/repos/{RELEASES_REPO}/releases/latest"))
-        .set("User-Agent", "ModernDayPioneer")
-        .set("Accept", "application/vnd.github+json")
-        .timeout(std::time::Duration::from_secs(10))
-        .call();
-    let latest: Latest = match resp {
-        Ok(r) => {
-            let latest = serde_json::from_reader(r.into_reader()).map_err(err)?;
+    let latest = match latest_release() {
+        Ok(Some(latest)) => {
             mark_checked()?;
             latest
         }
         // No release published yet.
-        Err(ureq::Error::Status(404, _)) => {
+        Ok(None) => {
             mark_checked()?;
             return Ok(None);
         }
@@ -86,10 +104,14 @@ pub async fn check_for_update(app: AppHandle, daily: bool) -> Res<Option<Update>
 /// Google's page for asking for a Takeout with only Google Photos selected (the "Bring in from Google Photos" steps).
 pub const TAKEOUT_PAGE: &str = "https://takeout.google.com/settings/takeout/custom/photos";
 
-/// Open the releases page, Google Takeout or a feedback email; nothing else.
+/// The project's website; Help pages live under /help/ (sprint 14).
+pub const SITE: &str = "https://moderndaypioneer.org/";
+
+/// Open the releases page, the project's website, Google Takeout or a
+/// feedback email; nothing else.
 #[tauri::command]
 pub fn open_link(app: AppHandle, url: String) -> Res<()> {
-    let ok = url.starts_with(&releases_page()) || url == TAKEOUT_PAGE || (!FEEDBACK_EMAIL.is_empty() && url.starts_with(&format!("mailto:{FEEDBACK_EMAIL}")));
+    let ok = url.starts_with(&releases_page()) || url.starts_with(SITE) || url == TAKEOUT_PAGE || (!FEEDBACK_EMAIL.is_empty() && url.starts_with(&format!("mailto:{FEEDBACK_EMAIL}")));
     if !ok {
         return Err("That link can't be opened from here.".into());
     }
@@ -98,6 +120,15 @@ pub fn open_link(app: AppHandle, url: String) -> Res<()> {
 
 #[cfg(test)]
 mod tests {
+    /// Needs the internet: asks the real public releases page.
+    #[test]
+    #[ignore]
+    fn reads_the_latest_release() {
+        let latest = super::latest_release().unwrap().expect("a public release");
+        assert!(super::newer(&latest.tag_name, "0.0.1"), "{}", latest.tag_name);
+        assert!(latest.html_url.unwrap().contains("/releases/"));
+    }
+
     #[test]
     fn versions() {
         assert!(super::newer("v0.12.80", "0.12.72"));

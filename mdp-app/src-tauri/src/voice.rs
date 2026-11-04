@@ -484,9 +484,10 @@ fn start_download(voice: &Voice, name: &str, work: impl FnOnce(&Download) -> Res
 
 /// The size and SHA-256 that Hugging Face publishes for a model file.
 fn published(file: &str) -> Result<(u64, String), String> {
-    let list = ureq::get("https://huggingface.co/api/models/ggerganov/whisper.cpp/tree/main")
+    let list = crate::release::web().get("https://huggingface.co/api/models/ggerganov/whisper.cpp/tree/main")
         .call()
         .map_err(|e| format!("The model page could not be reached ({e}). Check the internet connection, or use a model file you already have."))?
+        .into_body()
         .into_reader();
     let list: serde_json::Value = serde_json::from_reader(list).map_err(err)?;
     let entry = list
@@ -585,16 +586,16 @@ pub fn download_model(app: AppHandle, voice: State<Voice>, name: String) -> Res<
         let mut tries = 0;
         let got = loop {
             let have = std::fs::metadata(&partial).map(|m| m.len()).unwrap_or(0).min(size);
-            let mut req = ureq::get(&format!("{MODEL_PAGE}/resolve/main/{file}"));
+            let mut req = crate::release::web().get(&format!("{MODEL_PAGE}/resolve/main/{file}"));
             if have > 0 {
-                req = req.set("Range", &format!("bytes={have}-"));
+                req = req.header("Range", &format!("bytes={have}-"));
             }
             let attempt = req
                 .call()
                 .map_err(|e| format!("The download could not start ({e})."))
                 .and_then(|resp| {
                     let from = if resp.status() == 206 { have } else { 0 };
-                    copy_resumed(resp.into_reader(), &partial, from, d)
+                    copy_resumed(resp.into_body().into_reader(), &partial, from, d)
                 });
             match attempt {
                 Ok(sha) => break sha,
@@ -625,9 +626,9 @@ pub fn download_model(app: AppHandle, voice: State<Voice>, name: String) -> Res<
 #[cfg(test)]
 pub fn fetch_model_for_test(file: &str, dest: &Path) -> Result<(), String> {
     let (size, sha) = published(file)?;
-    let resp = ureq::get(&format!("{MODEL_PAGE}/resolve/main/{file}")).call().map_err(err)?;
+    let resp = crate::release::web().get(&format!("{MODEL_PAGE}/resolve/main/{file}")).call().map_err(err)?;
     let d = Download::default();
-    let got = copy_counted(resp.into_reader(), dest, &d)?;
+    let got = copy_counted(resp.into_body().into_reader(), dest, &d)?;
     let partial = dest.with_extension("partial");
     let len = std::fs::metadata(&partial).map_err(err)?.len();
     if len != size || got != sha {

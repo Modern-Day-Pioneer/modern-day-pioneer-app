@@ -516,3 +516,25 @@ small.words { color: var(--muted); font-style: italic; display: -webkit-box; -we
 .results [role=option] .thumb.small { flex: none; }
 .results [role=option] > span:not(.thumb) { flex: 1; }
 .raw.pick.memories { max-height: 55vh; }
+
+/* Getting started (sprint 14): a guide card on Home, set apart by a gold edge. */
+.getting { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid #d9822b; border-radius: 8px; padding: 14px 18px; }
+.getting header { display: flex; align-items: baseline; gap: 10px; }
+.getting header .count { color: var(--muted); font-variant-numeric: tabular-nums; }
+.getting header .link { margin-left: auto; }
+.gs-steps { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.gs-steps li { display: flex; align-items: center; gap: 10px; padding: 4px 6px; border-radius: 6px; }
+.gs-steps .tick { width: 20px; height: 20px; flex: none; border: 2px solid var(--muted); border-radius: 50%; display: grid; place-items: center; font-size: 12px; line-height: 1; }
+.gs-steps .done .tick { background: var(--pine); border-color: var(--pine); color: var(--surface); }
+.gs-steps .done .t { color: var(--muted); }
+.gs-steps .next { background: color-mix(in srgb, #d9822b 12%, transparent); font-weight: 600; }
+.gs-steps .next .tick { border-color: #d9822b; }
+.gs-steps .t { flex: 1; }
+.gs-steps small { color: var(--muted); font-weight: 400; }
+.gs-steps .done small { color: var(--pine); }
+.gs-done { display: flex; flex-direction: column; gap: 8px; }
+.gs-done p { margin: 0; }
+.help-links { list-style: none; padding: 0; margin: 8px 0 12px; display: flex; flex-direction: column; gap: 8px; }
+/* "?" beside a new word (sprint 14). */
+button.term { display: inline-grid; place-items: center; width: 20px; height: 20px; margin-left: 6px; padding: 0; border: 1px solid var(--line); border-radius: 50%; background: var(--surface); color: var(--sys); font: 600 12px/1 var(--ui); letter-spacing: 0; text-transform: none; vertical-align: middle; cursor: pointer; }
+button.term:hover { background: var(--sys-soft); }

@@ -22,12 +22,18 @@ serde_json = "1"
 base64 = "0.22"
 whisper-rs = "0.16"
 cpal = "0.16"
-ureq = "2"
+ureq = "3"
 sha2 = "0.10"
 sysinfo = "0.39.6"
 chrono = "0.4"
 tiny_http = "0.12"
-symphonia = { version = "0.5", default-features = false, features = ["wav", "pcm", "mp3", "aac", "isomp4", "flac", "ogg", "vorbis", "adpcm"] }
+symphonia = { version = "0.6", default-features = false, features = ["wav", "pcm", "mp3", "aac", "isomp4", "flac", "ogg", "vorbis", "adpcm"] }
+
+# On Windows (and Linux), trust the computer's own certificate store, so the
+# update check and model download also work behind antivirus or office
+# HTTPS inspection. Android keeps the built-in roots.
+[target.'cfg(not(target_os = "android"))'.dependencies]
+ureq = { version = "3", features = ["platform-verifier"] }
 
 [profile.dev.package."*"]
 opt-level = 3

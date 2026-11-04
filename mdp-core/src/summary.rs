@@ -15,6 +15,10 @@ pub struct Counts {
     pub families: i64,
     pub places: i64,
     pub waiting: i64,
+    /// Pictures anywhere in the Journey, and memories placed in a story:
+    /// two of the getting-started steps (sprint 14).
+    pub pictures: i64,
+    pub in_stories: i64,
 }
 
 #[derive(Debug, Serialize, Clone, PartialEq)]
@@ -111,6 +115,8 @@ impl Journey {
                 families: count(self, "SELECT count(*) FROM family")?,
                 places: count(self, "SELECT count(*) FROM place")?,
                 waiting: count(self, &format!("SELECT count(*) FROM content WHERE state = 'waiting' AND {}", crate::voice::NOT_ATTACHED))?,
+                pictures: count(self, "SELECT count(*) FROM content WHERE kind = 'picture'")?,
+                in_stories: count(self, "SELECT count(DISTINCT memory_id) FROM story_memory")?,
             },
             to_finish: entries(
                 self,
