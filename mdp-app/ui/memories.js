@@ -434,9 +434,14 @@ extraLoaders.memory = async (id) => {
         } catch { /* shown */ }
       }))))) : null;
 
+  // The Scrapbook look lays the memory out as an open journal: the photos,
+  // recordings and notes on the left page, the details on the right (sprint 15).
+  items.classList.add('page-left');
+  const featured = featuredSwitch(id, v.featured, v.name);
+  for (const part of [form, people, stories, featured]) part?.classList?.add('page-right');
   // Parts with nothing to show are null; replaceChildren would print them as "null".
   $('#memory-body').replaceChildren(...[header('h-memory', v.name, `Memory${inStories ? ` in ${inStories}` : ''}`, id), memoryNavBar(id),
-    couldAdd, proposals, finished, transcriptProgress(v.items), items, form, people, stories, featuredSwitch(id, v.featured, v.name)].filter((x) => x != null));
+    couldAdd, proposals, finished, transcriptProgress(v.items), items, form, people, stories, featured].filter((x) => x != null));
 };
 
 function roleFields(v, current = null) {

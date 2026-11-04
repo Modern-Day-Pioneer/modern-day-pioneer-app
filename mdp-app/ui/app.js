@@ -352,9 +352,9 @@ async function homeWaiting() {
   $('#waiting-short').replaceChildren(...shown.map((it, i) => {
     const img = el('span', { class: 'thumb small', 'data-thumb': it.id, 'aria-hidden': 'true' }, KIND_WORD[it.kind]?.[0] || '?');
     return el('li', {}, img,
-      el('span', { class: 't' }, el('button', { class: 'link', type: 'button', onclick: () => openViewer(shown, i, '', waitingActions) }, it.name),
-        el('small', {}, `${KIND_WORD[it.kind] || it.kind} · ${it.date || 'date not known'}`)),
-      el('button', { class: 'btn', type: 'button', onclick: () => makeMemoryOf(it) }, 'Make a memory…', el('span', { class: 'sr' }, ` from ${it.name}`)));
+      el('span', { class: 't' }, el('button', { class: 'link', type: 'button', onclick: () => openViewer(shown, i, '', waitingActions) }, waitingLabel(it)),
+        el('small', {}, waitingLine(it))),
+      el('button', { class: 'btn', type: 'button', onclick: () => makeMemoryOf(it) }, 'Make a memory…', el('span', { class: 'sr' }, ` from ${waitingLabel(it)}`)));
   }));
   $('#waiting-short').hidden = shown.length === 0;
   $('#waiting-more').hidden = list.length <= HOME_WAITING;
@@ -393,6 +393,19 @@ async function loadPeople() {
 
 let showing = 'waiting';
 const KIND_WORD = { picture: 'Picture', 'voice recording': 'Recording', video: 'Video', text: 'Text' };
+// Waiting shows a title and a date, not a camera's file name (sprint 15): the
+// title the file name suggests, else "Picture from 1965", else the file name.
+// The file name stays on the small line, so nothing is hidden.
+function waitingLabel(it) {
+  if (it.title) return it.title;
+  const d = it.date || it.name_date;
+  return d ? `${KIND_WORD[it.kind] || 'Item'} from ${d}` : it.name;
+}
+function waitingLine(it) {
+  const label = waitingLabel(it);
+  const when = it.date || (it.name_date ? `${it.name_date} (from the file name)` : 'date not known');
+  return [KIND_WORD[it.kind] || it.kind, when, label === it.name ? null : it.name].filter(Boolean).join(' · ');
+}
 const thumbs = new Map();
 
 async function loadWaiting() {
@@ -448,9 +461,9 @@ function sortWaiting(list) {
   const text = $('#wf-text').value.trim().toLowerCase();
   const kind = $('#wf-kind').value;
   const noDate = $('#wf-nodate').checked;
-  const rows = list.filter((it) => (!text || it.name.toLowerCase().includes(text))
+  const rows = list.filter((it) => (!text || it.name.toLowerCase().includes(text) || waitingLabel(it).toLowerCase().includes(text))
     && (!kind || it.kind === kind) && (!noDate || !it.date));
-  const name = (a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+  const name = (a, b) => waitingLabel(a).localeCompare(waitingLabel(b), undefined, { sensitivity: 'base' }) || a.name.localeCompare(b.name);
   if (sort === 'old') rows.reverse();
   else if (sort === 'name') rows.sort(name);
   else if (sort === 'date') rows.sort((a, b) => (a.date_sort ? 0 : 1) - (b.date_sort ? 0 : 1) || (a.date_sort || '').localeCompare(b.date_sort || '') || name(a, b));
@@ -531,8 +544,8 @@ function groupCard(g, byId) {
   const useDate = g.date ? el('input', { type: 'checkbox', id: nextId('gd'), checked: true }) : null;
   const usePlace = g.place_id ? el('input', { type: 'checkbox', id: nextId('gp'), checked: true }) : null;
   const strip = el('ul', { class: 'strip', 'aria-label': 'Items in this group' }, ...items.slice(0, 12).map((it, i) =>
-    el('li', {}, el('button', { class: 'link', type: 'button', title: it.name, onclick: () => openViewer(items, i, g.label, waitingActions) },
-      el('span', { class: 'thumb', 'data-thumb': it.id }, KIND_WORD[it.kind]?.[0] || '?'), el('span', { class: 'sr' }, it.name)))),
+    el('li', {}, el('button', { class: 'link', type: 'button', title: waitingLabel(it), onclick: () => openViewer(items, i, g.label, waitingActions) },
+      el('span', { class: 'thumb', 'data-thumb': it.id }, KIND_WORD[it.kind]?.[0] || '?'), el('span', { class: 'sr' }, waitingLabel(it))))),
     items.length > 12 ? el('li', { class: 'quiet' }, `and ${items.length - 12} more`) : null);
   const done = () => { skippedGroups.add(g.key); refreshAfterWaiting(); };
   const make = async () => {
@@ -565,7 +578,7 @@ function groupCard(g, byId) {
 
 function rawRow(it, index) {
   const img = el('span', { class: 'thumb', 'data-thumb': it.id, 'aria-hidden': 'true' }, KIND_WORD[it.kind]?.[0] || '?');
-  const tick = showing === 'waiting' ? el('input', { type: 'checkbox', checked: ticked.has(it.id), 'aria-label': `Select ${it.name}`,
+  const tick = showing === 'waiting' ? el('input', { type: 'checkbox', checked: ticked.has(it.id), 'aria-label': `Select ${waitingLabel(it)}`,
     onchange: (e) => { if (e.target.checked) ticked.add(it.id); else ticked.delete(it.id); paintTicked(); } }) : null;
   const other = showing === 'waiting'
     ? el('button', { class: 'btn', type: 'button', onclick: () => moveTo(it, 'set aside') }, 'Set aside', el('span', { class: 'sr' }, `: ${it.name}`))
@@ -573,8 +586,8 @@ function rawRow(it, index) {
   return el('li', {},
     tick,
     img,
-    el('span', { class: 't' }, el('button', { class: 'link', type: 'button', onclick: () => openViewer(shownItems, index, '', waitingActions) }, it.name),
-      el('small', {}, `${KIND_WORD[it.kind] || it.kind} · ${it.date || (it.name_date ? `${it.name_date} (from the file name)` : 'date not known')}`)),
+    el('span', { class: 't' }, el('button', { class: 'link', type: 'button', onclick: () => openViewer(shownItems, index, '', waitingActions) }, waitingLabel(it)),
+      el('small', {}, waitingLine(it))),
     // The phone keeps rows short: the actions are on the selection bar and
     // on the item's own large view (Jared, 2026-10-19).
     PHONE ? null : rowActions(it, other));

@@ -5,9 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Modern Day Pioneer</title>
 <link rel="stylesheet" href="app.css">
+<script src="look.js"></script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
+<!-- Scrapbook look (sprint 15): a soft torn edge for paper, used on a few
+     large sheets only, never on each picture. -->
+<svg class="defs" width="0" height="0" aria-hidden="true" focusable="false"><defs>
+  <filter id="mdp-tear" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency=".05" numOctaves="4" seed="3" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="6" xChannelSelector="R" yChannelSelector="G"/></filter>
+</defs></svg>
 
 <!-- First run: only the Journey's name is asked for. -->
 <div class="firstrun" id="firstrun" role="main" hidden>
@@ -202,8 +208,8 @@
       <form class="row filters" id="waiting-tools" aria-label="Find and sort waiting items">
         <div class="field"><label for="wf-sort">Show</label>
           <select id="wf-sort"><option value="new">Newest added first</option><option value="old">Oldest added first</option>
-            <option value="name">By name</option><option value="date">By date taken</option></select></div>
-        <div class="field"><label for="wf-text">Name has</label><input id="wf-text" type="search" autocomplete="off"></div>
+            <option value="name">By title</option><option value="date">By date taken</option></select></div>
+        <div class="field"><label for="wf-text">Title or file name has</label><input id="wf-text" type="search" autocomplete="off"></div>
         <div class="field"><label for="wf-kind">Kind</label><select id="wf-kind"><option value="">Any kind</option>
           <option value="picture">Pictures</option><option value="voice recording">Recordings</option><option value="video">Videos</option><option value="text">Text</option></select></div>
         <label class="switch" for="wf-nodate"><input type="checkbox" id="wf-nodate">No date yet</label>
@@ -326,6 +332,17 @@
 
     <section class="pane" data-pane="settings" aria-labelledby="h-settings" hidden>
       <div><h1 id="h-settings">Settings</h1></div>
+      <section class="settings looks" aria-labelledby="h-look">
+        <h2 id="h-look" class="h3like">How the app looks <span class="desktop-only">on this computer</span><span class="phone-only">on this phone</span></h2>
+        <div class="form">
+          <div class="field"><label for="s-look">Look</label>
+            <select id="s-look" aria-describedby="s-look-h"><option value="system">System</option><option value="scrapbook">Scrapbook</option></select></div>
+          <div class="field"><label for="s-density">Density</label>
+            <select id="s-density" aria-describedby="s-look-h"><option value="compact">Compact</option><option value="comfortable">Comfortable</option></select></div>
+        </div>
+        <p class="quiet" id="s-look-h">System is plain and follows Windows light and dark. Scrapbook is leather, wood and paper: light oak and linen when Windows is light, walnut when it is dark. Comfortable makes rows and buttons larger. These change at once and are kept on this device only.</p>
+        <p class="warn" id="s-look-hc" hidden>High contrast is on, so the app shows the System look until it is turned off.</p>
+      </section>
       <form class="settings" id="settings-form">
         <div class="field"><label for="s-author">Your name on this device (shown in the change history)</label><input id="s-author" autocomplete="name"></div>
         <div class="field"><label for="s-living">Living people in the export</label>
