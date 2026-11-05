@@ -431,7 +431,7 @@ fn call(j: &mut Journey, cmd: &str, a: &Value) -> Result<Value, String> {
             Value::Null
         }
         "version_note" => json!({"before": std::env::var("MDP_TEST_BEFORE").ok(), "now": "0.0.0"}),
-        "get_settings" => json!({"author": j.author(), "living_people": "leave out", "exact_places": "town only", "front_door": "bookshelf",
+        "get_settings" => json!({"author": j.author(), "living_people": "leave out", "exact_places": "town only", "front_door": "bookshelf", "export_style": "plain",
             "suggestions": SUGGEST.load(std::sync::atomic::Ordering::SeqCst),
             "journey_folder": j.root().display().to_string(), "export_folder": "", "folder_warning": null}),
         "export_info" => {
@@ -443,7 +443,8 @@ fn call(j: &mut Journey, cmd: &str, a: &Value) -> Result<Value, String> {
             let folder = export_dir(j);
             let ctx = mdp_core::jobs::JobContext::new();
             // The checks can ask for the coffee table front door (sprint 13).
-            let privacy = mdp_core::export::Privacy::default().with_front_door(a["front_door"].as_str().unwrap_or("bookshelf"));
+            let privacy = mdp_core::export::Privacy::default().with_front_door(a["front_door"].as_str().unwrap_or("bookshelf"))
+                .with_export_style(a["export_style"].as_str().unwrap_or("plain"));
             let r = j.export(&folder, privacy, &ctx).map_err(e);
             *EXPORT.lock().unwrap() = Some((r, ctx.skipped().into_iter().map(|s| json!({"item": s.item, "reason": s.reason})).collect()));
             Value::Null
@@ -458,7 +459,7 @@ fn call(j: &mut Journey, cmd: &str, a: &Value) -> Result<Value, String> {
             Value::Null
         }
         "cancel_export" | "open_export" | "show_export_folder" => Value::Null,
-        "open_preview" => json!(j.preview(mdp_core::export::Privacy::default()).map_err(e)?.1.note),
+        "open_preview" => json!(j.preview(mdp_core::export::Privacy::default().with_export_style(a["export_style"].as_str().unwrap_or("plain"))).map_err(e)?.1.note),
         c if c.starts_with("record_") || c.starts_with("voice_") || ["transcribe", "set_auto_transcribe", "choose_model", "download_model",
             "use_model_file", "cancel_download", "clear_download", "cancel_transcribe", "show_models_folder", "model_offer_answered"].contains(&c) => voice(j, c, a)?,
         other => return Err(format!("ui_server does not answer {other}")),

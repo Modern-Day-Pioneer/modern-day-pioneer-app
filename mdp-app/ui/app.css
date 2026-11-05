@@ -208,6 +208,11 @@ button.person:hover { border-color: var(--navy); }
 .thumb { width: 56px; height: 56px; border-radius: 6px; background: var(--paper); border: 1px solid var(--line); display: grid; place-items: center; overflow: hidden; color: var(--muted); font-weight: 600; flex: none; }
 .thumb img { width: 100%; height: 100%; object-fit: cover; }
 .thumb.small { width: 40px; height: 40px; }
+/* Kinds as icons (sprint 17): a small one on the line under a name, a larger one in an empty thumbnail. */
+.kind-ic { display: inline-flex; vertical-align: -3px; margin-right: 5px; color: var(--muted); }
+.kind-ic.big svg { width: 45%; height: 45%; min-width: 18px; min-height: 18px; }
+.kind-ic.big { margin: 0; width: 100%; height: 100%; align-items: center; justify-content: center; }
+.kindline { display: flex; align-items: center; flex-wrap: wrap; gap: 0 2px; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 body.dropping #main { outline: 3px dashed var(--navy); outline-offset: -6px; }
 
@@ -829,14 +834,32 @@ svg.defs { position: absolute; width: 0; height: 0; overflow: hidden; }
 /* A paperclip holds the last Home card at its top corner, clear of its words. */
 :root[data-look="scrapbook"] .action:last-child::before { content: ""; position: absolute; top: -17px; right: -16px; width: 80px; height: 22px; z-index: 1;
   background: url(props/paperclip.webp) center / 100% 100% no-repeat; transform: rotate(-80deg); pointer-events: none; }
-/* Memories to finish: a notepad pinned to the desk. */
-:root[data-look="scrapbook"] .pane[data-pane="home"] #to-finish { position: relative; margin-top: 8px; background: none; box-shadow: none;
-  border-style: solid; border-width: 52px 12px 22px 36px; border-image: url(props/notepad.webp) 110 24 40 100 fill / 52px 12px 22px 36px stretch;
-  filter: drop-shadow(0 2px 2px rgba(var(--shade), .35)) drop-shadow(0 8px 12px rgba(var(--shade), .25)); }
-:root[data-look="scrapbook"] .pane[data-pane="home"] #to-finish::before { content: ""; position: absolute; top: -50px; left: 50%; width: 38px; height: 42px; margin-left: -19px;
-  background: url(props/pushpin.webp) center / 100% 100% no-repeat; pointer-events: none; }
-:root[data-look="scrapbook"] .pane[data-pane="home"] #to-finish > li { background: none; }
-:root[data-look="scrapbook"] .pane[data-pane="home"] #to-finish > li + li { border-top: 1px solid rgba(120, 100, 70, .25); }
+/* Memories to finish: a legal pad on the desk (Jared, 2026-11-05). The
+   flat glued binding and the yellow ruled paper are CSS, so the pad is always several lines tall and grows
+   with the list. With nothing to finish, its first line says so. */
+:root[data-look="scrapbook"] .pane[data-pane="home"] #to-finish {
+  position: relative; margin-top: 8px; padding: 74px 14px 18px 50px; min-height: 290px; border: 0; border-radius: 0 0 3px 4px;
+  background:
+    linear-gradient(90deg, transparent 38px, #e2797b 38px 39px, transparent 39px 42px, #e2797b 42px 43px, transparent 43px) 0 60px / 100% calc(100% - 60px) no-repeat,
+    repeating-linear-gradient(180deg, transparent 0 27px, rgba(96, 140, 190, .45) 27px 28px) 0 78px / 100% calc(100% - 78px) no-repeat,
+    linear-gradient(160deg, rgba(255, 255, 255, .35), transparent 40%, rgba(150, 120, 40, .08)),
+    #fbecb3;
+  filter: drop-shadow(0 2px 2px rgba(var(--shade), .35)) drop-shadow(0 8px 12px rgba(var(--shade), .25));
+}
+:root[data-look="scrapbook"] .pane[data-pane="home"] #to-finish::before {
+  /* The binding: the pad's glued header. It wraps the whole top of the sheets, edge to edge and
+     a little past them, so it holds the paper together; a pressed crease runs along its lower part. */
+  content: ""; position: absolute; top: -3px; left: -2px; right: -2px; height: 60px; pointer-events: none; border-radius: 3px 3px 1px 1px;
+  background:
+    linear-gradient(180deg, rgba(255, 235, 200, .25), transparent 22%, transparent 70%, rgba(40, 20, 5, .4) 72%, rgba(255, 225, 180, .18) 74%, transparent 80%, rgba(40, 20, 5, .3) 95%, rgba(40, 20, 5, .6)),
+    var(--grain),
+    url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180"><filter id="m"><feTurbulence type="fractalNoise" baseFrequency=".035" numOctaves="3" seed="7"/><feColorMatrix values="0 0 0 0 .2 0 0 0 0 .1 0 0 0 0 .03 0 0 0 .55 -.12"/></filter><rect width="100%" height="100%" filter="url(%23m)"/></svg>'),
+    linear-gradient(90deg, #8c5a2e, #9a6535 50%, #8a582c);
+  box-shadow: 0 1px 0 rgba(60, 35, 10, .5), 0 3px 4px rgba(60, 35, 10, .3);
+}
+:root[data-look="scrapbook"] .pane[data-pane="home"] #to-finish > li { background: none; color: #2b211b; }
+:root[data-look="scrapbook"] .pane[data-pane="home"] #to-finish > li + li { border-top: 0; }
+:root[data-look="scrapbook"] .pane[data-pane="home"] #to-finish > li.blank { min-height: 28px; padding: 4px 0; font-style: italic; color: #5c4a22; }
 
 /* The memory: an open journal, photos on the left page, details on the right. */
 :root[data-look="scrapbook"] .pane[data-pane="memory"] .thumb.big { border: 5px solid #fff; border-bottom-width: 12px; border-radius: 2px;
@@ -867,3 +890,144 @@ svg.defs { position: absolute; width: 0; height: 0; overflow: hidden; }
   :root[data-look="scrapbook"] nav.side .search::before { display: none; }
   :root[data-look="scrapbook"] .pane { margin: 0; border-radius: 0; }
 }
+
+/* Waiting in a box (sprint 17, Jared): in the Scrapbook look, List and Tiles
+   sit inside a cardboard box (an AI-made picture, props/waiting-box.webp,
+   with its floor cut out). The box's walls are a frame laid over the list,
+   which scrolls on the floor, so the pictures always look inside the box and
+   slide under its front wall. The picture stretches by its border-image
+   slices, so the box fits any window. System look and high contrast: no box. */
+:root[data-look="scrapbook"] .waitbox { position: relative; margin: 4px -6px 0; isolation: isolate; }
+:root[data-look="scrapbook"] .waitbox:has(> ul[hidden]) { display: none; }
+:root[data-look="scrapbook"] .waitbox::after {
+  content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  border-style: solid; border-width: 68px 80px 78px 50px;
+  border-image: url("props/waiting-box.webp") 136 159 156 99 / 68px 80px 78px 50px stretch;
+}
+:root[data-look="scrapbook"] .waitbox::before {
+  content: ""; position: absolute; inset: 54px 66px 50px 38px; z-index: 0; border-radius: 4px;
+  background: linear-gradient(180deg, rgba(var(--shade), .28), rgba(var(--shade), .08) 18%, transparent 40%), #cdb48f;
+  /* The walls' shadows on the floor are drawn here, a fixed width, and not taken
+     from the picture's middle: stretched on a wide window they covered the
+     rows and their buttons (issue #73). */
+  box-shadow: inset 18px 0 16px -10px rgba(var(--shade), .3), inset -18px 0 16px -10px rgba(var(--shade), .3);
+}
+:root[data-look="scrapbook"] .pane .waitbox > #waiting-list {
+  /* The list stays on the floor, inside the side walls (Jared, 2026-11-05: think
+     three dimensional); only the front wall may hide what scrolls behind it. */
+  position: relative; z-index: 1; margin: 68px 100px 46px 62px; padding: 18px 16px 40px 14px;
+  height: calc(var(--boxh, 520px) - 114px); overflow-y: auto; overscroll-behavior: contain;
+  scrollbar-width: thin; scrollbar-color: rgba(var(--shade), .5) transparent; background: none; border: 0; box-shadow: none; border-radius: 0;
+}
+:root[data-look="scrapbook"] .waitbox > #waiting-list > li:first-child { border-top: 0; }
+
+/* In the box, List rows are index cards on the floor, so text keeps its contrast. */
+:root[data-look="scrapbook"] .pane:not([data-view="tiles"]) .waitbox > #waiting-list > li {
+  background: var(--print); border: 0; border-radius: 5px 7px 6px 4px; margin-bottom: 8px; padding: 8px 10px;
+  box-shadow: 0 1px 1px rgba(var(--shade), .3), 0 3px 6px rgba(var(--shade), .16);
+}
+/* Home's "Waiting for a memory" in the same box (Jared, 2026-11-05): small
+   tiles by default, or a list; the size steps with the box's own tag. */
+:root[data-look="scrapbook"] .homebox > #waiting-short {
+  position: relative; z-index: 1; margin: 68px 100px 46px 62px; padding: 16px 14px 34px 12px; height: 322px; overflow-y: auto;
+  overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: rgba(var(--shade), .5) transparent;
+  background: none; border: 0; box-shadow: none; border-radius: 0;
+}
+:root[data-look="scrapbook"] .homebox[data-view="tiles"] > #waiting-short {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--tile, 100px), 1fr)); gap: 14px 12px; align-content: start;
+}
+:root[data-look="scrapbook"] .homebox > #waiting-short > li {
+  padding: 6px 8px; border: 0; background: var(--print); border-radius: 3px; margin-bottom: 8px;
+  box-shadow: 0 1px 1px rgba(var(--shade), .3), 0 4px 8px rgba(var(--shade), .2);
+}
+:root[data-look="scrapbook"] .homebox[data-view="tiles"] > #waiting-short > li {
+  flex-direction: column; align-items: stretch; gap: 4px; padding: 6px 6px 8px; margin: 0; transform: rotate(var(--tilt, -.8deg));
+}
+:root[data-look="scrapbook"] .homebox[data-view="tiles"] > #waiting-short > li:nth-child(3n+2) { --tilt: 1.1deg; }
+:root[data-look="scrapbook"] .homebox[data-view="tiles"] > #waiting-short > li:nth-child(3n) { --tilt: -.3deg; }
+:root[data-look="scrapbook"] .homebox[data-view="tiles"] > #waiting-short .thumb { width: 100%; height: calc(var(--tile, 100px) * .78); border: 0; border-radius: 2px; }
+:root[data-look="scrapbook"] .homebox > #waiting-short .t { min-width: 0; }
+:root[data-look="scrapbook"] .homebox[data-view="tiles"] > #waiting-short .t .link { font-size: 13px; }
+:root[data-look="scrapbook"] .homebox[data-view="tiles"] > #waiting-short .t small { font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+:root[data-look="scrapbook"] .homebox[data-view="tiles"] > #waiting-short .btn { font-size: 12px; padding: 4px 4px; min-height: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* The box's tag: Tiles / List and − / +, on a stitched paper label at the box's back edge. */
+.boxtag { display: none; }
+:root[data-look="scrapbook"] .waitbox > .boxtag {
+  display: flex; align-items: center; gap: 4px; position: absolute; z-index: 3; top: 2px; right: 104px;
+  padding: 5px 8px; border-radius: 9px; background: #efe4cc; transform: rotate(.6deg);
+  box-shadow: inset 0 0 0 2px #efe4cc, inset 0 0 0 3.5px #b39f7c, 0 1px 1px rgba(0, 0, 0, .25), 0 4px 8px rgba(var(--shade), .2);
+}
+:root[data-look="scrapbook"] .boxtag .btn { min-height: 28px; padding: 2px 10px; font-size: 13px; }
+:root[data-look="scrapbook"] .boxtag .btn[aria-pressed="true"] { background: var(--navy); color: var(--navy-ink); border-color: var(--navy); }
+:root[data-look="scrapbook"] .boxtag .sep { width: 1px; align-self: stretch; margin: 2px 4px; background: #b39f7c; }
+
+/* Torn paper wherever a plain white sheet was (Jared, 2026-11-05): the paper
+   moves to a layer behind the content and gets the Journey's torn edge
+   (#mdp-tear), so the text and controls on it stay sharp. The cardboard box
+   and the legal pad keep their own looks. */
+:root[data-look="scrapbook"] :is(.pane:not([data-pane="home"]), .todo, .raw, .lines, .items, .storygroup, .getting, .side-box,
+  .previewcard, .group, .job.done, .famsum, .pane[data-pane="home"] :is(.empty, #waiting-more, #to-finish-more)):not(#to-finish, #waiting-short, #waiting-list) {
+  isolation: isolate; background: none; box-shadow: none; border-color: transparent;
+}
+:root[data-look="scrapbook"] :is(.pane:not([data-pane="home"]), .todo, .raw, .lines, .items, .storygroup, .getting, .side-box,
+  .previewcard, .group, .job.done, .pane[data-pane="home"] :is(.empty, #waiting-more, #to-finish-more)):not(#to-finish, #waiting-short, #waiting-list) { position: relative; }
+:root[data-look="scrapbook"] .previewcard { overflow: visible; }
+:root[data-look="scrapbook"] .previewcard .shot { border-radius: 6px 6px 0 0; }
+:root[data-look="scrapbook"] :is(.pane:not([data-pane="home"]), .todo, .raw, .lines, .items, .storygroup, .getting, .side-box,
+  .previewcard, .group, .job.done, .famsum, .pane[data-pane="home"] :is(.empty, #waiting-more, #to-finish-more)):not(#to-finish, #waiting-short, #waiting-list)::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: var(--print);
+  background-image: linear-gradient(160deg, rgba(255, 255, 255, .6), transparent 45%, rgba(120, 90, 40, .08));
+  border-radius: 12px 7px 14px 9px / 8px 12px 9px 14px;
+  filter: url(#mdp-tear) drop-shadow(0 1px 1px rgba(var(--shade), .3)) drop-shadow(0 4px 8px rgba(var(--shade), .16));
+}
+/* The screen sheets are cream with fibers and a deeper shadow, under the white sheets on them. */
+:root[data-look="scrapbook"] .pane:not([data-pane="home"])::before {
+  background: var(--surface); background-image: linear-gradient(135deg, rgba(255, 255, 255, .5), transparent 35%, rgba(140, 100, 40, .06)), var(--fiber);
+  filter: url(#mdp-tear) drop-shadow(0 1px 1px rgba(var(--shade), .4)) drop-shadow(0 6px 10px rgba(var(--shade), .25)) drop-shadow(0 18px 32px rgba(var(--shade), .3));
+}
+/* The Getting started sheet keeps its gold edge as a stripe on the paper. */
+:root[data-look="scrapbook"] .getting::before { background-image: linear-gradient(90deg, var(--gold) 0 4px, transparent 4px), linear-gradient(160deg, rgba(255, 255, 255, .6), transparent 45%, rgba(120, 90, 40, .08)); }
+
+/* Theme cohesion fixes (Jared, 2026-11-05). */
+/* 1. A screen's title takes focus for screen readers when the screen opens; on
+   paper it gets a soft gold underline in place of the hard box. Controls keep their rings. */
+:root[data-look="scrapbook"] :is(h1, h2, main)[tabindex="-1"]:focus { outline: none; }
+:root[data-look="scrapbook"] :is(h1, h2)[tabindex="-1"]:focus-visible { text-decoration: underline 2px var(--gold); text-underline-offset: 6px; }
+/* 2. The memory's "Add from waiting / Type a note / Record" choices: stitched paper cards, like Home's actions. */
+:root[data-look="scrapbook"] .slot { position: relative; border: 0; background: var(--print); border-radius: 9px 12px 10px 13px;
+  box-shadow: 0 1px 1px rgba(var(--shade), .3), 0 3px 6px rgba(var(--shade), .16), 0 10px 18px rgba(var(--shade), .14); }
+:root[data-look="scrapbook"] .slot::after { content: ""; position: absolute; inset: 5px; border: 1.5px dashed rgba(150, 120, 80, .45); border-radius: 7px; pointer-events: none; }
+:root[data-look="scrapbook"] .slot:hover { box-shadow: 0 0 0 2px var(--gold), 0 3px 6px rgba(var(--shade), .2), 0 12px 20px rgba(var(--shade), .18); }
+/* 3. Notices: a torn slip of the legal pad's yellow paper, taped on. */
+:root[data-look="scrapbook"] :is(.warn, .pv-note) { position: relative; isolation: isolate; background: none; border-radius: 0; padding: 12px 16px 10px; color: #4a3c12; transform: rotate(-.4deg); }
+:root[data-look="scrapbook"] :is(.warn, .pv-note)::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(160deg, rgba(255, 255, 255, .35), transparent 45%, rgba(150, 120, 40, .1)), #fbecb3;
+  filter: url(#mdp-tear) drop-shadow(0 1px 1px rgba(var(--shade), .3)) drop-shadow(0 4px 7px rgba(var(--shade), .16)); }
+:root[data-look="scrapbook"] :is(.warn, .pv-note)::after { content: ""; position: absolute; top: -9px; left: 22px; width: 70px; height: 20px; transform: rotate(-3deg);
+  background: url(props/tape.webp) center / 100% 100% no-repeat; pointer-events: none; }
+:root[data-look="scrapbook"] .pv-note:empty { display: none; }
+/* 4. Waiting's selection bar: a stitched paper tag, like the box's tag. */
+:root[data-look="scrapbook"] :is(.selbar, #sel-bar) { border: 0; border-radius: 10px; background: #efe4cc; transform: rotate(-.3deg);
+  box-shadow: inset 0 0 0 3px #efe4cc, inset 0 0 0 4.5px #b39f7c, 0 1px 1px rgba(0, 0, 0, .25), 0 4px 8px rgba(var(--shade), .2); }
+:root[data-look="scrapbook"] .selbar span { color: #5c4a33; }
+/* 5. People's names: small paper name tags with a stitched edge; the tick box stays plain. */
+:root[data-look="scrapbook"] .person { position: relative; border: 0; border-radius: 6px 9px 7px 8px; background: #f6eedb; color: var(--ink);
+  box-shadow: inset 0 0 0 3px #f6eedb, inset 0 0 0 4.5px rgba(150, 120, 80, .55), 0 1px 1px rgba(var(--shade), .3), 0 3px 6px rgba(var(--shade), .16); }
+:root[data-look="scrapbook"] :is(.personcard, .people > .person):nth-child(odd) { transform: rotate(-.7deg); }
+:root[data-look="scrapbook"] :is(.personcard, .people > .person):nth-child(even) { transform: rotate(.6deg); }
+:root[data-look="scrapbook"] .person:hover { box-shadow: inset 0 0 0 3px #f6eedb, inset 0 0 0 4.5px var(--gold), 0 1px 1px rgba(var(--shade), .3), 0 4px 8px rgba(var(--shade), .2); }
+
+/* Memories to finish: the whole line opens the memory; the words sit beside the
+   picture with the chip and Finished under them (Jared, 2026-11-05). */
+#to-finish .t { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; min-width: 0; }
+#to-finish .t .acts { flex-direction: row; justify-content: flex-start; align-items: center; gap: 8px; margin-top: 4px; }
+#to-finish .t .chip { font-size: 11px; }
+#to-finish .t > .chip { margin-top: 4px; }
+li.opens { cursor: pointer; }
+li.opens:hover .link { text-decoration: underline; }
+#to-finish li.opens { align-items: flex-start; }
+
+/* A torn sheet is its own layer; while a control on it is in use (a name
+   picker's list is open), it lies above the sheets after it, such as the
+   import table's sticky headings (issue #75). */
+:root[data-look="scrapbook"] :is(.todo, .raw, .lines, .items, .storygroup, .getting, .side-box, .previewcard, .group, .job.done, .famsum):focus-within { z-index: 6; }

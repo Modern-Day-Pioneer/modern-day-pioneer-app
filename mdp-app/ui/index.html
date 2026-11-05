@@ -95,7 +95,7 @@
         <div class="panel">
           <header><h2 class="h3like">Waiting for a memory</h2><span class="count" id="wcount"></span><button class="link" data-go="waiting">See all</button></header>
           <p class="empty" id="waiting-empty">Nothing is waiting. Pictures and recordings you bring in will wait here until they go into a memory.</p>
-          <ul class="todo" id="waiting-short" hidden></ul>
+          <div class="waitbox homebox"><ul class="todo" id="waiting-short" hidden></ul></div>
           <button class="link" type="button" data-go="waiting" id="waiting-more" hidden></button>
         </div>
         <div class="panel">
@@ -228,7 +228,7 @@
         </div>
       </div>
       <label class="switch selall" for="sel-all"><input type="checkbox" id="sel-all"> Select all</label>
-      <ul class="raw" id="waiting-list" aria-labelledby="h-waiting"></ul>
+      <div class="waitbox"><ul class="raw" id="waiting-list" aria-labelledby="h-waiting"></ul></div>
       <div id="waiting-pages" hidden></div>
       <p class="empty" id="waiting-list-empty">Nothing is waiting. Pictures and recordings you bring in wait here until they go into a memory.</p>
       <div id="group-list" hidden></div>
@@ -353,6 +353,9 @@
         <div class="field"><label for="s-front">Front door of the export</label>
           <select id="s-front" aria-describedby="s-front-h"><option value="bookshelf">Bookshelf: each story is a book on a shelf</option><option value="coffee table">Coffee table: stories as magazines with a cover picture</option></select>
           <p class="hint" id="s-front-h">The first page of the exported history. The plain lists are always one link away.</p></div>
+        <div class="field"><label for="s-style">Look of the export</label>
+          <select id="s-style" aria-describedby="s-style-h"><option value="plain">Plain: quiet paper and type</option><option value="scrapbook">Scrapbook: paper on a wood desk, leather and stitching</option></select>
+          <p class="hint" id="s-style-h">Only the look changes; the pages and files are the same. Printing and high contrast always use the plain look.</p></div>
         <section class="field wide speech" aria-labelledby="h-speech"><h2 id="h-speech" class="h3like">Speech to text</h2>
           <div id="speech"><p class="quiet">Looking for the speech model…</p></div></section>
         <div class="field"><label for="s-folder">Journey folder</label>

@@ -21,6 +21,13 @@ pub(crate) struct ScanJob {
     result: Arc<Mutex<Option<Res<Plan>>>>,
 }
 
+impl ScanJob {
+    /// Stop looking through the folder (the Journey is changing).
+    pub(crate) fn cancel(&self) {
+        self.ctx.cancel();
+    }
+}
+
 #[derive(Serialize)]
 pub(crate) struct ScanStatus {
     running: bool,

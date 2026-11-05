@@ -69,11 +69,13 @@ struct JourneySettings {
     opened_with: Option<String>,
     /// The export's front door: "bookshelf" (default) or "coffee table" (sprint 13).
     front_door: String,
+    /// The export's look: "plain" (default) or "scrapbook" (sprint 17).
+    export_style: String,
 }
 
 impl Default for JourneySettings {
     fn default() -> Self {
-        JourneySettings { living_people: "leave out".into(), exact_places: "town only".into(), suggestions: true, export_folder: None, last_backup: None, backup_folder: None, export_copy: None, export_copy_name: None, opened_with: None, front_door: "bookshelf".into() }
+        JourneySettings { living_people: "leave out".into(), exact_places: "town only".into(), suggestions: true, export_folder: None, last_backup: None, backup_folder: None, export_copy: None, export_copy_name: None, opened_with: None, front_door: "bookshelf".into(), export_style: "plain".into() }
     }
 }
 
@@ -88,6 +90,19 @@ struct AppState {
     scan: Option<bulk::ScanJob>,
     /// A Journey made just now (no "new version" backup offer for it).
     fresh: Option<PathBuf>,
+}
+
+impl AppState {
+    /// Make `j` the open Journey. What belonged to the one before goes with it:
+    /// a folder being looked through and its list (issue #74), and the last
+    /// check of its files. An import already running finishes into its own Journey.
+    fn switch_to(&mut self, j: Journey) {
+        if let Some(scan) = self.scan.take() {
+            scan.cancel();
+        }
+        self.files = FileCheck::default();
+        self.journey = Some(j);
+    }
 }
 
 #[derive(Clone)]
@@ -309,7 +324,7 @@ fn create_journey(app: AppHandle, state: State<Shared>, name: String, folder: Op
     let home = remember(&app, &mut j)?;
     let mut s = state.lock().map_err(err)?;
     s.fresh = Some(j.root().to_path_buf());
-    s.journey = Some(j);
+    s.switch_to(j);
     Ok(home)
 }
 
@@ -355,7 +370,7 @@ fn version_note(app: AppHandle, state: State<Shared>) -> Res<VersionNote> {
 fn open_journey(app: AppHandle, state: State<Shared>, folder: String) -> Res<Home> {
     let mut j = Journey::open(Path::new(&folder)).map_err(err)?;
     let home = remember(&app, &mut j)?;
-    state.lock().map_err(err)?.journey = Some(j);
+    state.lock().map_err(err)?.switch_to(j);
     Ok(home)
 }
 
@@ -370,7 +385,7 @@ fn open_sample(app: AppHandle, state: State<Shared>) -> Res<Home> {
     if made {
         s.fresh = Some(j.root().to_path_buf());
     }
-    s.journey = Some(j);
+    s.switch_to(j);
     Ok(home)
 }
 
@@ -708,6 +723,9 @@ struct SettingsView {
     /// "bookshelf" or "coffee table" (sprint 13).
     #[serde(default)]
     front_door: String,
+    /// "plain" or "scrapbook" (sprint 17).
+    #[serde(default)]
+    export_style: String,
     suggestions: bool,
     journey_folder: String,
     export_folder: String,
@@ -731,6 +749,7 @@ fn get_settings(app: AppHandle, state: State<Shared>) -> Res<SettingsView> {
         living_people: js.living_people,
         exact_places: js.exact_places,
         front_door: js.front_door,
+        export_style: js.export_style,
         suggestions: js.suggestions,
         journey_folder: j.root().display().to_string(),
         journey_folder_shown: mobile::shown(&app, &j.root().display().to_string()),
@@ -763,6 +782,9 @@ fn save_settings(app: AppHandle, state: State<Shared>, settings: SettingsView) -
     }
     if ["bookshelf", "coffee table"].contains(&settings.front_door.as_str()) {
         js.front_door = settings.front_door;
+    }
+    if ["plain", "scrapbook"].contains(&settings.export_style.as_str()) {
+        js.export_style = settings.export_style;
     }
     js.suggestions = settings.suggestions;
     let default_export = default_export_folder(&app, &j.name().map_err(err)?);

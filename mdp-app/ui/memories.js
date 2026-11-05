@@ -139,7 +139,7 @@ extraLoaders.stories = async () => {
   showMemories();
 };
 
-const memoryLine = (m, list, from) => el('li', {}, storyThumb(m),
+const memoryLine = (m, list, from) => el('li', { class: 'opens' }, storyThumb(m),
   el('span', { class: 't' }, el('button', { class: 'link', type: 'button', onclick: () => openInList(list, m.id, from) }, m.name),
     el('small', {}, [m.date || 'No date yet', m.who].filter(Boolean).join(' · ')),
     m.words ? el('small', { class: 'words' }, m.words) : null),

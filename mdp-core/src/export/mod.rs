@@ -47,22 +47,29 @@ pub struct Privacy {
     /// Open on the coffee table instead of the bookshelf (the setting
     /// "coffee table"; the bookshelf stays the default).
     pub coffee_table: bool,
+    /// Add the Scrapbook stylesheet over the plain one (the setting
+    /// "scrapbook", sprint 17). The pages are the same either way.
+    pub scrapbook: bool,
 }
 
 impl Default for Privacy {
     fn default() -> Self {
-        Privacy { living_dates: false, exact_places: false, coffee_table: false }
+        Privacy { living_dates: false, exact_places: false, coffee_table: false, scrapbook: false }
     }
 }
 
 impl Privacy {
     /// From the settings' words: "leave out" or "include", "town only" or "exact".
     pub fn from_settings(living_people: &str, exact_places: &str) -> Privacy {
-        Privacy { living_dates: living_people == "include", exact_places: exact_places == "exact", coffee_table: false }
+        Privacy { living_dates: living_people == "include", exact_places: exact_places == "exact", coffee_table: false, scrapbook: false }
     }
     /// The same with the front door: "bookshelf" or "coffee table".
     pub fn with_front_door(self, front_door: &str) -> Privacy {
         Privacy { coffee_table: front_door == "coffee table", ..self }
+    }
+    /// The same with the export's look: "plain" or "scrapbook" (sprint 17).
+    pub fn with_export_style(self, style: &str) -> Privacy {
+        Privacy { scrapbook: style == "scrapbook", ..self }
     }
 }
 

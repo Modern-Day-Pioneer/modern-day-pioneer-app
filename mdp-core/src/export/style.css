@@ -41,7 +41,7 @@ h2{font-size:1.35rem;margin:2rem 0 .6rem}h3,.memory header h2{font-size:1.3rem;m
  box-shadow:inset 3px 0 6px rgba(255,255,255,.15),inset -4px 0 8px rgba(0,0,0,.3);transition:transform .15s}
 .book:nth-child(3n){height:11.5rem}.book:nth-child(4n+1){height:12.4rem}
 .book .t{font:600 .95rem var(--display);max-height:75%;overflow:hidden}.book .s{font-size:.7rem}
-.book.face{writing-mode:horizontal-tb;width:9.5rem;height:13.5rem;align-items:flex-start;padding:14px;border-radius:3px}
+.book.face{display:flex;margin:0;writing-mode:horizontal-tb;width:9.5rem;height:13.5rem;align-items:flex-start;padding:14px;border-radius:3px}
 .book.face .t{font-size:1.1rem}.book:hover,.book:focus-visible{transform:translateY(-8px)}
 @media (prefers-reduced-motion:reduce){.book{transition:none}}
 /* a story is a book: each memory is a page that fills the screen */

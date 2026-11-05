@@ -85,7 +85,7 @@ function lines(items, render, empty) {
 
 // A memory given its cover (withCovers) shows it, small, before its name.
 function linkLine(entry, ...buttons) {
-  return el('li', {}, 'cover_kind' in entry ? storyThumb(entry, 'small') : null, el('span', { class: 't' },
+  return el('li', { class: 'opens' }, 'cover_kind' in entry ? storyThumb(entry, 'small') : null, el('span', { class: 't' },
     el('button', { class: 'link', type: 'button', onclick: () => (entry.open ? entry.open() : openItem(entry.id)) }, entry.name),
     entry.note ? el('small', {}, entry.note) : null,
     entry.words ? el('small', { class: 'words' }, entry.words) : null), ...buttons);

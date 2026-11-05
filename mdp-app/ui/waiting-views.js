@@ -115,7 +115,7 @@ function shelfRow(s, draw) {
       const cover = g.items.find((it) => it.kind === 'picture' || it.kind === 'video') || g.items[0];
       draw.push(cover);
       return el('li', {}, el('button', { class: 'wbox', type: 'button', 'data-box': g.key, onclick: () => { openBox = g.key; paintWaiting(); $('#box-back')?.focus(); } },
-        el('span', { class: 'boxart', 'aria-hidden': 'true' }, el('span', { class: 'thumb', 'data-thumb': cover.id }, KIND_WORD[cover.kind]?.[0] || '?')),
+        el('span', { class: 'boxart', 'aria-hidden': 'true' }, el('span', { class: 'thumb', 'data-thumb': cover.id }, kindMark(cover.kind))),
         el('b', {}, g.label), el('small', {}, [countWords(g.items), g.sub].filter(Boolean).join(' · ')),
         el('span', { class: 'sr' }, '. Open the box')));
     })));
@@ -146,7 +146,7 @@ function printEl(it, items) {
   const tick = showing === 'waiting' ? el('input', { type: 'checkbox', checked: ticked.has(it.id), 'aria-label': `Select ${label}`,
     onchange: (e) => { if (e.target.checked) ticked.add(it.id); else ticked.delete(it.id); paintTicked(); } }) : null;
   return el('li', { class: 'print' }, tick,
-    el('button', { class: 'link', type: 'button', title: waitingLine(it), onclick: () => openViewer(items, items.indexOf(it), '', waitingActions) },
-      el('span', { class: 'thumb', 'data-thumb': it.id, 'aria-hidden': 'true' }, KIND_WORD[it.kind]?.[0] || '?'),
-      el('span', { class: 'cap' }, label)));
+    el('button', { class: 'link', type: 'button', title: waitingLineText(it), onclick: () => openViewer(items, items.indexOf(it), '', waitingActions) },
+      el('span', { class: 'thumb', 'data-thumb': it.id, 'aria-hidden': 'true' }, kindMark(it.kind)),
+      el('span', { class: 'cap' }, kindIcon(it.kind), label)));
 }

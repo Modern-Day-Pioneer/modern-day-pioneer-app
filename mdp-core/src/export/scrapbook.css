@@ -1,0 +1,163 @@
+/* Modern Day Pioneer export, Scrapbook style (sprint 17). Linked after style.css.
+   It only changes how the same pages look: a wood desk, cream paper, leather and
+   stitching. Delete this file and every page still reads with the plain style.
+   Plain CSS; the only images are two small props beside it, used as decoration.
+   Printing, high contrast and "more contrast" always get the plain style. */
+@media screen {
+@media not ((forced-colors: active) or (prefers-contrast: more)) {
+:root:root {
+  --desk1: #d9bc8e; --desk2: #c4a271; --desk3: #a8855a; --lamp: rgba(255, 255, 240, .45); --shade: 60, 40, 20;
+  --leather1: #8a5a30; --leather2: #5e3a1d; --thread: #f3e3bd; --on-leather: #f6ead3;
+  --paper: #f3ebdb; --sheet: #fbf7ef; --print: #fffdf8; --ink: #2b211b; --muted: #66563f; --rule: #dccfb5;
+  --accent: #8a4b12; --tag: #efe4cc; --stitch: #b39f7c; --tape: rgba(236, 224, 196, .82);
+  --wood: #8a5a32; --wood-d: #5e3b1f;
+  --fiber: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="260" height="260"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency=".75" numOctaves="2" stitchTiles="stitch"/><feColorMatrix values="0 0 0 0 .45 0 0 0 0 .33 0 0 0 0 .15 0 0 0 .07 0"/></filter><rect width="100%" height="100%" filter="url(%23n)"/></svg>');
+  --grain: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="220" height="220"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="3" stitchTiles="stitch"/><feColorMatrix values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .2 0"/></filter><rect width="100%" height="100%" filter="url(%23n)"/></svg>');
+  color-scheme: light;
+}
+/* Walnut when the computer is dark; the paper stays cream so text keeps its contrast. */
+@media (prefers-color-scheme: dark) {
+  :root:root:not([data-theme="light"]) {
+    --desk1: #5a3a24; --desk2: #3a2415; --desk3: #2a1a0f; --lamp: rgba(255, 220, 160, .22); --shade: 0, 0, 0;
+    --leather1: #6e3a26; --leather2: #4a2416; --thread: #d9b26a;
+    --paper: #e9dec8; --sheet: #f3ebdc; --print: #faf5ea; --rule: #d3c4a6; --muted: #625139;
+    --wood: #6b4527; --wood-d: #45291a; color-scheme: light;
+  }
+}
+:root:root[data-theme="dark"] {
+  --desk1: #5a3a24; --desk2: #3a2415; --desk3: #2a1a0f; --lamp: rgba(255, 220, 160, .22); --shade: 0, 0, 0;
+  --leather1: #6e3a26; --leather2: #4a2416; --thread: #d9b26a;
+  --paper: #e9dec8; --sheet: #f3ebdc; --print: #faf5ea; --rule: #d3c4a6; --muted: #625139;
+  --wood: #6b4527; --wood-d: #45291a; color-scheme: light;
+}
+
+html { background: var(--desk3); }
+/* The desk: wood grain lit from the top left. */
+body {
+  background: radial-gradient(ellipse 70% 40% at 15% 0%, var(--lamp), transparent 60%), var(--grain),
+    repeating-linear-gradient(92deg, rgba(0, 0, 0, .06) 0 3px, transparent 3px 9px, rgba(0, 0, 0, .04) 9px 11px, transparent 11px 23px),
+    linear-gradient(180deg, var(--desk1), var(--desk2) 45%, var(--desk3));
+  background-attachment: fixed;
+}
+
+/* The top: a leather band with a saddle-stitched lower edge. */
+.top {
+  position: relative; border: 0; padding-bottom: 18px; color: var(--on-leather);
+  background: var(--grain), linear-gradient(180deg, var(--leather1), var(--leather2));
+  box-shadow: 0 3px 8px rgba(0, 0, 0, .35);
+}
+.top::after {
+  content: ""; position: absolute; left: 10px; right: 10px; bottom: 6px; height: 0;
+  border-top: 2px dashed var(--thread); opacity: .85; pointer-events: none;
+}
+.brand { color: var(--on-leather); text-shadow: 0 1px 0 rgba(0, 0, 0, .45); }
+.top nav a { color: var(--on-leather); }
+.top nav a[aria-current] { color: var(--thread); }
+.top a:focus-visible { outline-color: var(--thread); }
+
+/* Each page is a sheet of cream paper: worn, uneven corners, a soft fibrous rim,
+   and three shadows from the one light. */
+main {
+  margin: 26px auto 34px; width: calc(100% - 32px); padding: 28px clamp(16px, 4vw, 40px) 44px;
+  background: var(--sheet);
+  background-image: linear-gradient(135deg, rgba(255, 255, 255, .5), transparent 35%, rgba(140, 100, 40, .06)), var(--fiber);
+  border-radius: 14px 9px 12px 7px / 9px 13px 8px 12px;
+  box-shadow: 0 0 0 2px rgba(252, 247, 236, .7), 0 0 0 3.5px rgba(190, 168, 128, .35),
+    0 1px 1px rgba(var(--shade), .4), 0 6px 10px rgba(var(--shade), .25), 0 18px 32px rgba(var(--shade), .3);
+}
+h1 { letter-spacing: .01em; }
+.kicker { letter-spacing: .12em; }
+.plain li { border-bottom: 1px dashed var(--rule); }
+
+/* Memories are prints held down with tape; cards carry a stitched label. */
+.memory, .mem-card {
+  position: relative; border: 0; background: var(--print);
+  background-image: linear-gradient(160deg, rgba(255, 255, 255, .6), transparent 45%, rgba(120, 90, 40, .07));
+  border-radius: 12px 7px 14px 9px / 8px 12px 9px 14px;
+  box-shadow: 0 1px 1px rgba(var(--shade), .3), 0 3px 6px rgba(var(--shade), .14), 0 10px 18px rgba(var(--shade), .12);
+}
+.memory { margin: 30px 0; }
+.memory::before {
+  content: ""; position: absolute; top: -12px; left: 50%; width: 112px; height: 26px; transform: translateX(-50%) rotate(-2deg);
+  background: url("props/tape.webp") center / 100% 100% no-repeat, var(--tape); border-radius: 2px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .18); pointer-events: none;
+}
+.mem-card::after { content: ""; position: absolute; inset: 5px; border: 1.5px dashed rgba(150, 120, 80, .45); border-radius: 7px; pointer-events: none; }
+.mem-card > * { position: relative; }
+.cards { gap: 16px; }
+.cards li:nth-child(3n+1) .mem-card { transform: rotate(-.6deg); }
+.cards li:nth-child(3n+2) .mem-card { transform: rotate(.5deg); }
+
+/* Pictures are prints: a white border and a soft lift. */
+.c-pic img, .leaf.cover img {
+  background: #fff; padding: 8px 8px 22px; border-radius: 3px;
+  box-shadow: 0 1px 1px rgba(var(--shade), .35), 0 4px 10px rgba(var(--shade), .22), 0 14px 26px rgba(var(--shade), .16);
+}
+.contents > .c-pic:nth-child(odd) img { transform: rotate(-.8deg); }
+.contents > .c-pic:nth-child(even) img { transform: rotate(.7deg); }
+.c-doc .pages img { border-color: var(--rule); box-shadow: 0 2px 6px rgba(var(--shade), .2); }
+.portrait { border: 5px solid #fff; box-shadow: 0 3px 10px rgba(var(--shade), .3); }
+.transcript { border-left: 2px dashed var(--stitch); }
+.why { border-left: 0; position: relative; padding: 12px 16px 12px 40px; background: var(--tag); border-radius: 10px;
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, .8), 0 1px 1px rgba(0, 0, 0, .2), 0 4px 8px rgba(var(--shade), .16); }
+.why::before { content: ""; position: absolute; left: 12px; top: -10px; width: 18px; height: 44px; background: url("props/paperclip.webp") center / contain no-repeat; pointer-events: none; }
+
+/* The bookshelf: real wood, books bound in leather with stitched bands. */
+.bookcase {
+  background: var(--grain), repeating-linear-gradient(90deg, rgba(0, 0, 0, .07) 0 2px, transparent 2px 13px),
+    linear-gradient(var(--wood-d), var(--wood));
+  border-radius: 14px 10px 12px 9px; box-shadow: inset 0 0 0 3px rgba(0, 0, 0, .18), 0 8px 22px rgba(var(--shade), .35);
+}
+.shelf { background: linear-gradient(180deg, rgba(0, 0, 0, .35), rgba(0, 0, 0, .12) 40%, rgba(0, 0, 0, .05)), var(--wood-d); box-shadow: inset 0 6px 12px rgba(0, 0, 0, .35); }
+.shelf h2 { display: inline-block; margin: 10px 12px 0; padding: 3px 10px; border-radius: 6px; background: var(--tag); color: var(--ink);
+  box-shadow: inset 0 0 0 2px var(--tag), inset 0 0 0 3.5px var(--stitch), 0 2px 4px rgba(0, 0, 0, .3); }
+.plank { height: 14px; background: var(--grain), linear-gradient(var(--wood), var(--wood-d)); box-shadow: 0 3px 5px rgba(0, 0, 0, .35); }
+.book {
+  background: var(--grain),
+    linear-gradient(transparent 14px, var(--thread) 14px 15.5px, transparent 15.5px calc(100% - 15.5px), var(--thread) calc(100% - 15.5px) calc(100% - 14px), transparent calc(100% - 14px)),
+    linear-gradient(90deg, rgba(0, 0, 0, .3), rgba(255, 255, 255, .12) 30%, transparent 60%, rgba(0, 0, 0, .3)), var(--c);
+  border-radius: 4px 4px 1px 1px; box-shadow: 1px 0 2px rgba(0, 0, 0, .4), inset 0 1px 0 rgba(255, 255, 255, .15);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, .5);
+}
+.book.face { background: var(--grain), linear-gradient(110deg, rgba(255, 255, 255, .14), transparent 40%, rgba(0, 0, 0, .25)), var(--c);
+  box-shadow: inset 0 0 0 6px var(--c), inset 0 0 0 7.5px var(--thread), 2px 3px 6px rgba(0, 0, 0, .4); }
+
+/* The coffee table: magazines on a polished wood top. */
+.coffee-table {
+  background: radial-gradient(ellipse 60% 45% at 25% 15%, rgba(255, 240, 210, .28), transparent 60%), var(--grain),
+    repeating-linear-gradient(88deg, rgba(0, 0, 0, .07) 0 2px, transparent 2px 11px), linear-gradient(160deg, var(--wood), var(--wood-d));
+  border-radius: 26px 22px 28px 20px; box-shadow: inset 0 0 0 3px rgba(0, 0, 0, .15), 0 10px 26px rgba(var(--shade), .4);
+}
+.mag a { background: var(--print); background-image: var(--fiber); border-radius: 3px 5px 4px 3px;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, .3), 0 6px 14px rgba(0, 0, 0, .3), 0 18px 28px rgba(0, 0, 0, .2); }
+
+/* A story: each memory is a page of a bound book, with a gutter shadow. */
+.reader main { background: none; box-shadow: none; padding: 0; margin: 0 auto; width: 100%; }
+.leaf { margin: 26px auto; width: calc(100% - 32px); border-bottom: 0; padding: 32px clamp(16px, 4vw, 44px);
+  background: var(--sheet); background-image: linear-gradient(90deg, rgba(90, 60, 20, .14), transparent 7%), var(--fiber);
+  border-radius: 6px 14px 12px 6px / 6px 10px 13px 6px;
+  box-shadow: 0 0 0 2px rgba(252, 247, 236, .7), 0 1px 1px rgba(var(--shade), .4), 0 6px 10px rgba(var(--shade), .22), 0 18px 32px rgba(var(--shade), .26); }
+.leaf .memory { background: none; box-shadow: none; }
+.leaf .memory::before { display: none; }
+.folio { font-family: var(--display); font-style: italic; }
+
+/* Search sits on a stitched paper tag; the field itself stays plain. */
+.find { padding: 12px 14px; border-radius: 12px; background: var(--tag); position: relative;
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, .8), 0 1px 1px rgba(0, 0, 0, .25), 0 4px 8px rgba(var(--shade), .2); }
+.find::before { content: ""; position: absolute; inset: 4px; border: 1.5px dashed var(--stitch); border-radius: 9px; pointer-events: none; }
+.find > * { position: relative; }
+.find input { background: #fffaf0; border-color: #9c8a6a; }
+.find button { background: #2c3e50; border-color: #2c3e50; color: #fff; }
+
+.pv-banner { background: var(--note, #f6e7bf); border-color: #c9a45a; }
+/* The foot: a small paper tag on the desk. */
+.foot { border: 0; margin: 0 auto 26px; width: fit-content; max-width: calc(100% - 32px); padding: 8px 14px; border-radius: 8px;
+  background: var(--tag); color: var(--muted); box-shadow: 0 1px 1px rgba(0, 0, 0, .25), 0 4px 8px rgba(var(--shade), .2); }
+
+/* On a phone the sheets come straight and close to the edge. */
+@media (max-width: 520px) {
+  main, .leaf { width: calc(100% - 16px); margin-top: 14px; }
+  .cards li .mem-card, .c-pic img { transform: none; }
+}
+}
+}

@@ -178,7 +178,7 @@ await page.waitForTimeout(300);
 await show('home');
 await page.waitForTimeout(800);
 await axe('07-scrapbook-home-props');
-const props = ['tape', 'pushpin', 'paperclip', 'shoebox', 'shoebox-front', 'notepad'];
+const props = ['tape', 'paperclip', 'shoebox', 'shoebox-front', 'waiting-box'];
 let bytes = 0;
 for (const p of props) {
   const r = await page.evaluate(async (f) => { const x = await fetch(`props/${f}.webp`); return { ok: x.ok, n: (await x.arrayBuffer()).byteLength }; }, p);
@@ -187,7 +187,7 @@ for (const p of props) {
 }
 results.propBytes = bytes;
 check('propsWithinBudget', bytes < 1024 * 1024);
-check('notepadOnHome', (await page.$eval('#to-finish', (u) => getComputedStyle(u).borderImageSource)).includes('notepad.webp'));
+check('legalPadOnHome', (await page.$eval('#to-finish', (u) => getComputedStyle(u, '::before').backgroundImage)).includes('linear-gradient'));
 
 // 6. Text at 150% and 200% in both views and both looks.
 for (const look of ['system', 'scrapbook']) {

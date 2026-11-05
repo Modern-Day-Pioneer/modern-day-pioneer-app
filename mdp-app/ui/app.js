@@ -203,7 +203,11 @@ document.addEventListener('click', (ev) => {
 });
 $('#back').addEventListener('click', goBack);
 
+// Each screen that keeps state for the open Journey adds a way to forget it
+// here; it runs when another Journey opens or a new one starts (issue #74).
+const journeyResets = [];
 function enterApp(home) {
+  for (const reset of journeyResets) { try { reset(); } catch (e) { console.warn(e); } }
   $('#firstrun').hidden = true;
   $('#app').hidden = false;
   renderHome(home);
@@ -245,14 +249,16 @@ for (const pane of ['stories', 'waiting', 'people']) $(`section.pane[data-pane="
 // Waiting as a list or as tiles (sprint 12, Jared). Same items and actions either way.
 function viewSwitch(pane) {
   const key = `mdp.view.${pane}`;
-  let view = 'list';
-  try { view = localStorage.getItem(key) || 'list'; } catch { /* private window */ }
+  // Sprint 17 (Jared): Waiting opens as Tiles unless the person chose otherwise.
+  const first = pane === 'waiting' ? 'tiles' : 'list';
+  let view = first;
+  try { view = localStorage.getItem(key) || first; } catch { /* private window */ }
   const box = $(`section.pane[data-pane="${pane}"]`);
   box.dataset.view = view;
   const id = `view-${pane}`;
   // Waiting at scale (sprint 16): grouped By month and By box views too.
   const views = [['list', 'List'], ['tiles', 'Tiles'], ...(pane === 'waiting' ? [['month', 'By month'], ['box', 'By box']] : [])];
-  if (!views.some(([v]) => v === view)) view = 'list';
+  if (!views.some(([v]) => v === view)) view = first;
   box.dataset.view = view;
   const sel = el('select', { id }, ...views.map(([v, t]) => el('option', { value: v, selected: v === view }, t)));
   sel.addEventListener('change', () => {
@@ -285,7 +291,13 @@ const coverSlot = (id) => el('span', { class: 'thumb small', 'aria-hidden': 'tru
 async function fillCoverSlots(root) {
   const covers = await memoryCovers();
   for (const box of root.querySelectorAll('[data-cover-of]')) {
-    const c = covers.get(box.dataset.coverOf);
+    let c = covers.get(box.dataset.coverOf);
+    // Sprint 17: a featured story shows its cover too (the cover picture of
+    // its first memory that has one); stories are not in the memory list.
+    if (!c) {
+      const v = await invoke('story_view', { id: box.dataset.coverOf }).catch(() => null);
+      if (v) c = { cover_id: v.cover_id, cover_kind: v.cover_id ? 'picture' : null };
+    }
     if (!c) { box.remove(); continue; }
     box.replaceWith(storyThumb({ ...c }, 'small'));
   }
@@ -308,9 +320,10 @@ function renderHome(h) {
   // Memories to finish: placeholders first, then memories that could use
   // more unless suggestions are off.
   const could = suggestOn ? h.could_add : [];
-  const finishLine = (m, note, chipEl) => el('li', {}, coverSlot(m.id),
-    el('span', { class: 't' }, el('button', { class: 'link', type: 'button', onclick: () => openItem(m.id) }, m.name), note ? el('small', {}, note) : null),
-    chipEl);
+  // The whole line opens the memory (Jared, 2026-11-05); the words sit beside
+  // the picture, with the chip and Finished under them.
+  const finishLine = (m, note, chipEl) => el('li', { class: 'opens' }, coverSlot(m.id),
+    el('span', { class: 't' }, el('button', { class: 'link', type: 'button', onclick: () => openItem(m.id) }, m.name), note ? el('small', {}, note) : null, chipEl));
   $('#to-finish').replaceChildren(
     ...h.to_finish.map((m) => finishLine(m, m.note, el('span', { class: 'chip needs' }, 'Needs a photo, recording or note'))),
     ...could.map((m) => finishLine(m, `Could add ${m.note}`, el('span', { class: 'acts' }, el('span', { class: 'chip add' }, 'Could use more'),
@@ -322,9 +335,17 @@ function renderHome(h) {
   $('#to-finish-empty').hidden = h.to_finish.length + could.length > 0 || c.memories === 0;
   $('#to-finish-empty').textContent = suggestOn ? 'Every memory has something in it, and a date, place, people, caption and story.' : 'Every memory has something in it.';
   $('#to-finish-none').hidden = c.memories > 0;
+  // Scrapbook look (Jared, 2026-11-05): the notepad always shows, a few lines
+  // long; with nothing to finish it says so on its first line.
+  if (document.documentElement.dataset.look === 'scrapbook' && $('#to-finish').hidden) {
+    const note = [$('#to-finish-empty'), $('#to-finish-none')].find((p) => !p.hidden);
+    $('#to-finish').replaceChildren(el('li', { class: 'blank' }, el('span', { class: 't' }, note ? note.textContent : 'Nothing to finish here.')));
+    $('#to-finish').hidden = false;
+    for (const p of [$('#to-finish-empty'), $('#to-finish-none')]) p.hidden = true;
+  }
   renderShelf(h.shelf);
   const nf = h.featured.length;
-  $('#featured').replaceChildren(...h.featured.map((f, i) => el('li', {}, coverSlot(f.id),
+  $('#featured').replaceChildren(...h.featured.map((f, i) => el('li', { class: 'opens' }, coverSlot(f.id),
     el('span', { class: 't' }, el('button', { class: 'link', onclick: () => openItem(f.id) }, f.name), el('small', {}, f.note)),
     i > 0 ? el('button', { class: 'btn', type: 'button', onclick: () => moveFeatured(f.id, -1) }, 'Up', el('span', { class: 'sr' }, ` ${f.name}`)) : null,
     i < nf - 1 ? el('button', { class: 'btn', type: 'button', onclick: () => moveFeatured(f.id, 1) }, 'Down', el('span', { class: 'sr' }, ` ${f.name}`)) : null)));
@@ -351,18 +372,30 @@ function renderShelf(shelf) {
 // Home shows the first few waiting items, each openable large or made into a
 // memory, with the full Waiting screen a click away (sprint 5 feedback).
 const HOME_WAITING = 5;
+const HOME_WAITING_BOX = 24;
+// A card or line marked .opens opens its item from anywhere on it, not only
+// from its name (Jared, 2026-11-05). Its own buttons, ticks and fields keep
+// their jobs; the name stays the keyboard and screen reader way in.
+document.addEventListener('click', (e) => {
+  const card = e.target.closest('li.opens');
+  if (!card || e.defaultPrevented || e.target.closest('button, a, input, label, select, textarea, summary, [role="menu"]')) return;
+  if (getSelection().toString()) return;
+  card.querySelector('.link')?.click();
+});
+
 async function homeWaiting() {
   const list = await invoke('raw_content', { kind: 'waiting' });
-  const shown = list.slice(0, HOME_WAITING);
+  // In the Scrapbook look the panel is a box of small prints that scrolls, so it holds more.
+  const shown = list.slice(0, document.documentElement.dataset.look === 'scrapbook' ? HOME_WAITING_BOX : HOME_WAITING);
   $('#waiting-short').replaceChildren(...shown.map((it, i) => {
-    const img = el('span', { class: 'thumb small', 'data-thumb': it.id, 'aria-hidden': 'true' }, KIND_WORD[it.kind]?.[0] || '?');
-    return el('li', {}, img,
+    const img = el('span', { class: 'thumb small', 'data-thumb': it.id, 'aria-hidden': 'true' }, kindMark(it.kind));
+    return el('li', { class: 'opens' }, img,
       el('span', { class: 't' }, el('button', { class: 'link', type: 'button', onclick: () => openViewer(shown, i, '', waitingActions) }, waitingLabel(it)),
-        el('small', {}, waitingLine(it))),
+        el('small', { class: 'kindline', title: waitingLineText(it) }, ...waitingLine(it))),
       el('button', { class: 'btn', type: 'button', onclick: () => makeMemoryOf(it) }, 'Make a memory…', el('span', { class: 'sr' }, ` from ${waitingLabel(it)}`)));
   }));
   $('#waiting-short').hidden = shown.length === 0;
-  $('#waiting-more').hidden = list.length <= HOME_WAITING;
+  $('#waiting-more').hidden = list.length <= shown.length;
   $('#waiting-more').textContent = `See all ${list.length} on the Waiting screen`;
   for (const it of shown) loadThumb(it);
 }
@@ -398,19 +431,38 @@ async function loadPeople() {
 
 let showing = 'waiting';
 const KIND_WORD = { picture: 'Picture', 'voice recording': 'Recording', video: 'Video', text: 'Text' };
+// Sprint 17 (Jared): Waiting shows each kind as a small icon, not a word. The
+// word stays for screen readers (role img with its name) and as a tooltip.
+const KIND_ICON = {
+  picture: '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M4 18l5-5 3 3 3-3 5 5"/>',
+  'voice recording': '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/>',
+  video: '<rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10.5l5-3v9l-5-3z"/>',
+  text: '<path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4M9 11h7M9 14.5h7M9 18h4"/>',
+};
+function kindIcon(kind, cls = 'kind-ic') {
+  const word = KIND_WORD[kind] || kind || 'Item';
+  const span = el('span', { class: cls, role: 'img', 'aria-label': word, title: word });
+  span.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${KIND_ICON[kind] || KIND_ICON.picture}</svg>`;
+  return span;
+}
+// A thumbnail's stand-in until the picture loads, or for a recording or text.
+const kindMark = (kind) => { const m = kindIcon(kind, 'kind-ic big'); m.removeAttribute('role'); m.removeAttribute('aria-label'); return m; };
 // Waiting shows a title and a date, not a camera's file name (sprint 15): the
-// title the file name suggests, else "Picture from 1965", else the file name.
-// The file name stays on the small line, so nothing is hidden.
+// title the file name suggests, else its date, else the file name. The file
+// name stays on the small line, so nothing is hidden.
 function waitingLabel(it) {
   if (it.title) return it.title;
-  const d = it.date || it.name_date;
-  return d ? `${KIND_WORD[it.kind] || 'Item'} from ${d}` : it.name;
+  return it.date || it.name_date || it.name;
 }
+// The small line: the kind's icon, then the date and the file name.
 function waitingLine(it) {
   const label = waitingLabel(it);
   const when = it.date || (it.name_date ? `${it.name_date} (from the file name)` : 'date not known');
-  return [KIND_WORD[it.kind] || it.kind, when, label === it.name ? null : it.name].filter(Boolean).join(' · ');
+  const date = label === it.date ? null : label === it.name_date ? 'date from the file name' : when;
+  return [kindIcon(it.kind), [date, label === it.name ? null : it.name].filter(Boolean).join(' · ')];
 }
+// The same in words, for a tooltip.
+const waitingLineText = (it) => [KIND_WORD[it.kind] || it.kind, waitingLine(it)[1]].filter(Boolean).join(' · ');
 const thumbs = new Map();
 
 async function loadWaiting() {
@@ -526,6 +578,7 @@ $('#sel-person').addEventListener('click', async () => {
 const GROUPS_AT_ONCE = 3;
 let groupsShown = GROUPS_AT_ONCE;
 const skippedGroups = new Set();
+journeyResets.push(() => { ticked.clear(); skippedGroups.clear(); shownItems = []; });
 
 function paintGroups(groups) {
   const byId = new Map(waitingLists.list.map((it) => [it.id, it]));
@@ -553,7 +606,7 @@ function groupCard(g, byId) {
   const usePlace = g.place_id ? el('input', { type: 'checkbox', id: nextId('gp'), checked: true }) : null;
   const strip = el('ul', { class: 'strip', 'aria-label': 'Items in this group' }, ...items.slice(0, 12).map((it, i) =>
     el('li', {}, el('button', { class: 'link', type: 'button', title: waitingLabel(it), onclick: () => openViewer(items, i, g.label, waitingActions) },
-      el('span', { class: 'thumb', 'data-thumb': it.id }, KIND_WORD[it.kind]?.[0] || '?'), el('span', { class: 'sr' }, waitingLabel(it))))),
+      el('span', { class: 'thumb', 'data-thumb': it.id }, kindMark(it.kind)), el('span', { class: 'sr' }, waitingLabel(it))))),
     items.length > 12 ? el('li', { class: 'quiet' }, `and ${items.length - 12} more`) : null);
   const done = () => { skippedGroups.add(g.key); refreshAfterWaiting(); };
   const make = async () => {
@@ -585,17 +638,17 @@ function groupCard(g, byId) {
 }
 
 function rawRow(it, index) {
-  const img = el('span', { class: 'thumb', 'data-thumb': it.id, 'aria-hidden': 'true' }, KIND_WORD[it.kind]?.[0] || '?');
+  const img = el('span', { class: 'thumb', 'data-thumb': it.id, 'aria-hidden': 'true' }, kindMark(it.kind));
   const tick = showing === 'waiting' ? el('input', { type: 'checkbox', checked: ticked.has(it.id), 'aria-label': `Select ${waitingLabel(it)}`,
     onchange: (e) => { if (e.target.checked) ticked.add(it.id); else ticked.delete(it.id); paintTicked(); } }) : null;
   const other = showing === 'waiting'
     ? el('button', { class: 'btn', type: 'button', onclick: () => moveTo(it, 'set aside') }, 'Set aside', el('span', { class: 'sr' }, `: ${it.name}`))
     : el('button', { class: 'btn', type: 'button', onclick: () => moveTo(it, 'waiting') }, 'Back to waiting', el('span', { class: 'sr' }, `: ${it.name}`));
-  return el('li', {},
+  return el('li', { class: 'opens' },
     tick,
     img,
     el('span', { class: 't' }, el('button', { class: 'link', type: 'button', onclick: () => openViewer(shownItems, index, '', waitingActions) }, waitingLabel(it)),
-      el('small', {}, waitingLine(it))),
+      el('small', { class: 'kindline' }, ...waitingLine(it))),
     // The phone keeps rows short: the actions are on the selection bar and
     // on the item's own large view (Jared, 2026-10-19).
     PHONE ? null : rowActions(it, other));
@@ -996,6 +1049,7 @@ async function loadSettings() {
   $('#s-living').value = settings.living_people;
   $('#s-places').value = settings.exact_places;
   $('#s-front').value = settings.front_door || 'bookshelf';
+  $('#s-style').value = settings.export_style || 'plain';
   $('#s-folder').value = PHONE ? settings.journey_folder_shown : settings.journey_folder;
   $('#s-export').value = PHONE ? settings.export_folder_shown : settings.export_folder;
   $('#s-tips').checked = settings.suggestions;
@@ -1009,7 +1063,7 @@ $('#settings-form').addEventListener('submit', async (ev) => {
   try {
     await invoke('save_settings', { settings: { ...settings,
       author: $('#s-author').value, living_people: $('#s-living').value, exact_places: $('#s-places').value,
-      front_door: $('#s-front').value, suggestions: $('#s-tips').checked, export_folder: PHONE ? settings.export_folder : $('#s-export').value } });
+      front_door: $('#s-front').value, export_style: $('#s-style').value, suggestions: $('#s-tips').checked, export_folder: PHONE ? settings.export_folder : $('#s-export').value } });
     toast('Settings saved.');
     await loadSettings();
   } catch (e) { showError(e); }
@@ -1122,3 +1176,68 @@ showVersion().catch(() => {});
     else showFirstRun(s.problem);
   } catch (e) { showFirstRun(String(e)); }
 })();
+
+// Waiting in a box (sprint 17): the box fills the window below its top, so
+// its front wall stays in view and the pictures scroll inside it.
+function fitWaitBox() {
+  const box = $('.waitbox:not(.homebox)');
+  if (!box || !box.offsetParent) return;
+  box.style.setProperty('--boxh', `${Math.max(320, window.innerHeight - box.getBoundingClientRect().top - 24)}px`);
+}
+window.addEventListener('resize', fitWaitBox);
+new MutationObserver(() => requestAnimationFrame(fitWaitBox)).observe(document.body, { attributes: true, subtree: true, attributeFilter: ['hidden', 'data-view'] });
+// Also when the list is filled, and when anything above the box changes height.
+new MutationObserver(() => requestAnimationFrame(fitWaitBox)).observe($('#waiting-list'), { childList: true });
+new ResizeObserver(() => fitWaitBox()).observe($('section.pane[data-pane="waiting"]'));
+
+
+// The box's own controls (Jared, 2026-11-05): a small tag on the box with
+// Tiles / List and smaller / larger, on Home and on Waiting. On Waiting they
+// drive the same "Show as" and "Picture size" choices, so both stay in step.
+function boxTag({ label, view, setView, size, setSize, sizes }) {
+  const btn = (text, name, onclick) => el('button', { class: 'btn', type: 'button', 'aria-label': name, title: name, onclick }, text);
+  const tiles = btn('Tiles', `${label} as tiles`, () => { setView('tiles'); paint(); });
+  const list = btn('List', `${label} as a list`, () => { setView('list'); paint(); });
+  const smaller = btn('−', `Smaller pictures in ${label}`, () => { setSize(Math.max(0, size() - 1)); paint(); });
+  const bigger = btn('+', `Larger pictures in ${label}`, () => { setSize(Math.min(sizes - 1, size() + 1)); paint(); });
+  function paint() {
+    tiles.setAttribute('aria-pressed', String(view() === 'tiles'));
+    list.setAttribute('aria-pressed', String(view() === 'list'));
+    smaller.disabled = size() <= 0;
+    bigger.disabled = size() >= sizes - 1;
+  }
+  paint();
+  const tag = el('div', { class: 'boxtag', role: 'group', 'aria-label': `How ${label} is shown` }, tiles, list, el('span', { class: 'sep', 'aria-hidden': 'true' }), smaller, bigger);
+  tag.repaint = paint;
+  return tag;
+}
+const keep = (k, v) => { try { localStorage.setItem(k, v); } catch { /* not kept */ } };
+const kept = (k, d) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } };
+{
+  // Home: its own view and size, kept on this device.
+  const box = $('.homebox');
+  const HOME_SIZES = [80, 100, 130, 170];
+  const apply = () => {
+    box.dataset.view = kept('mdp.view.home', 'tiles');
+    box.style.setProperty('--tile', `${HOME_SIZES[+kept('mdp.size.home', '1')] || 100}px`);
+  };
+  apply();
+  box.prepend(boxTag({ label: 'Waiting for a memory', sizes: HOME_SIZES.length,
+    view: () => box.dataset.view, setView: (v) => { keep('mdp.view.home', v); apply(); },
+    size: () => +kept('mdp.size.home', '1'), setSize: (i) => { keep('mdp.size.home', String(i)); apply(); } }));
+}
+{
+  // Waiting: the same choices as the selects above it.
+  const box = $('.waitbox:not(.homebox)');
+  const viewSel = $('#view-waiting');
+  const sizeSel = $('#thumbs-waiting');
+  const SIZES = ['s', 'm', 'l'];
+  const set = (sel, v) => { if (sel && sel.value !== v) { sel.value = v; sel.dispatchEvent(new Event('change')); } };
+  if (box && viewSel && sizeSel) {
+    const tag = boxTag({ label: 'Waiting', sizes: SIZES.length,
+      view: () => viewSel.value, setView: (v) => set(viewSel, v),
+      size: () => SIZES.indexOf(sizeSel.value), setSize: (i) => set(sizeSel, SIZES[i]) });
+    box.prepend(tag);
+    for (const s of [viewSel, sizeSel]) s.addEventListener('change', () => tag.repaint());
+  }
+}

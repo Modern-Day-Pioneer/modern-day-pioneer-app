@@ -47,6 +47,13 @@ async function startScan() {
 }
 
 let scanPolling = null;
+// Another Journey: the last folder's list belongs to the one before (issue #74).
+journeyResets.push(() => {
+  clearInterval(scanPolling);
+  Object.assign(bulk, { plan: null, folder: null, zips: null, shown: PAGE, fromCsv: false });
+  bulkShow(null);
+  $('#bulk-job').hidden = true;
+});
 function watchScan() {
   clearInterval(scanPolling);
   const tick = async () => {

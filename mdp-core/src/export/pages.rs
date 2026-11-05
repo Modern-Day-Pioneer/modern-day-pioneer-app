@@ -25,6 +25,12 @@ use super::{index, slug, Privacy, ABOUT_FILE, FRONT};
 use crate::{dates, Result};
 
 const CSS: &str = include_str!("style.css");
+/// The Scrapbook style (sprint 17): a second stylesheet over the same pages,
+/// linked after the plain one. Without it every page still reads.
+const SCRAPBOOK_CSS: &str = include_str!("scrapbook.css");
+/// Its props, decoration only (CSS backgrounds), well inside the 300 KB budget.
+pub const SCRAPBOOK_PROPS: [(&str, &[u8]); 2] =
+    [("tape.webp", include_bytes!("props/tape.webp")), ("paperclip.webp", include_bytes!("props/paperclip.webp"))];
 
 fn esc(s: &str) -> String {
     s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;").replace('"', "&quot;")
@@ -404,7 +410,7 @@ impl<'a> Site<'a> {
             .unwrap_or_default();
         let doc = format!(
             "<!doctype html>\n<html lang=\"{lang}\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n\
-<title>{full_title}</title><link rel=\"stylesheet\" href=\"{css}\"></head>\n\
+<title>{full_title}</title><link rel=\"stylesheet\" href=\"{css}\">{scrap}</head>\n\
 <body class=\"{cls}\"><a class=\"skip\" href=\"#main\">Skip to the page</a>\n\
 <header class=\"top\"><a class=\"brand\" href=\"{home}\">{j}</a><nav aria-label=\"Sections\">{nav}</nav></header>\n\
 <main id=\"main\">{banner}{body}</main>\n\
@@ -412,6 +418,7 @@ impl<'a> Site<'a> {
 </body></html>\n",
             lang = esc(if st(self.cat, "inLanguage").is_empty() { "en" } else { st(self.cat, "inLanguage") }),
             css = esc(&rel(path, "pages/style.css")),
+            scrap = if self.privacy.scrapbook { format!("<link rel=\"stylesheet\" href=\"{}\">", esc(&rel(path, "pages/scrapbook.css"))) } else { String::new() },
             home = esc(&rel(path, FRONT)),
             j = esc(journey),
             v = esc(st(self.cat, "formatVersion")),
@@ -445,6 +452,13 @@ pub fn render(
     std::fs::write(out.join("catalog.js"), format!("window.CATALOG = {};\n", serde_json::to_string(cat).map_err(json_err)?))?;
     std::fs::write(out.join(crate::jsonl::CONTEXT_FILE), crate::jsonl::CONTEXT)?;
     std::fs::write(out.join("pages").join("style.css"), CSS)?;
+    if privacy.scrapbook {
+        std::fs::write(out.join("pages").join("scrapbook.css"), SCRAPBOOK_CSS)?;
+        std::fs::create_dir_all(out.join("pages").join("props"))?;
+        for (name, bytes) in SCRAPBOOK_PROPS {
+            std::fs::write(out.join("pages").join("props").join(name), bytes)?;
+        }
+    }
 
     let mut site = Site {
         cat,
