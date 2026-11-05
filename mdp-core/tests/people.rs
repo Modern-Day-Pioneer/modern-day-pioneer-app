@@ -206,7 +206,8 @@ fn places_and_events() {
     let e = j.event_view(&wedding).unwrap();
     assert_eq!(e.name, "Wedding of Walter and June Rowan");
     assert_eq!(e.place.unwrap().name, "Ogden, Utah");
-    assert!(j.add_event("party", None, &[], "", None).is_err());
+    // Sprint 19: a kind the family types is kept ; an empty one is not.
+    assert!(j.add_event(" ", None, &[], "", None).is_err());
     assert_eq!(j.individual_view(&walter).unwrap().events[0].note, "June 2, 1956 · Ogden, Utah");
 
     // A birth event added on its own sets the person's birth date and birthplace.

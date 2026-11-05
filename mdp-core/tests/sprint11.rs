@@ -179,7 +179,7 @@ fn exported_history_rebuilds_and_merges() {
     let t = tempfile::tempdir().unwrap();
     let src = mdp_core::sample::create(&t.path().join("sample")).unwrap();
     let export = t.path().join("export");
-    src.export(&export, Privacy { living_dates: true, exact_places: true, coffee_table: false, scrapbook: false }, &JobContext::new()).unwrap();
+    src.export(&export, Privacy { living_dates: true, exact_places: true, coffee_table: false, scrapbook: false, checksums: false }, &JobContext::new()).unwrap();
     let count_all = |j: &Journey| {
         ["individual", "family", "family_member", "individual_relationship", "place", "event", "story", "story_memory", "memory", "memory_content", "memory_individual", "content"]
             .iter()

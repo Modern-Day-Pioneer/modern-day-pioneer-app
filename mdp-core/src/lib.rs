@@ -21,6 +21,7 @@ pub mod memories;
 pub mod people;
 pub mod pictures;
 pub mod places;
+pub mod preview;
 pub mod rebuild;
 pub mod sample;
 pub mod snapshot;
@@ -37,7 +38,7 @@ pub use journey::{Journey, OpenMode};
 
 /// Catalog format version ("Format version and upgrade rule").
 pub const FORMAT_MAJOR: u32 = 1;
-pub const FORMAT_MINOR: u32 = 5;
+pub const FORMAT_MINOR: u32 = 6;
 
 /// `PRAGMA user_version` holds the format version as major * 100 + minor (1.0 -> 100).
 pub fn format_user_version(major: u32, minor: u32) -> i64 {

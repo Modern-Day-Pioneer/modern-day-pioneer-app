@@ -1013,6 +1013,7 @@ pub fn render(
         .replace("{counts}", &counts)
         .replace("{front}", FRONT)
         .replace("{privacy}", &privacy_words.join("\n"))
+        .replace("{checks}", if privacy.checksums { CHECKS_TXT } else { "" })
         .replace("{fields}", field_lines.trim_end());
     std::fs::write(out.join(ABOUT_FILE), txt.replace('\n', "\r\n"))?;
     Ok(site.pages)
@@ -1077,12 +1078,31 @@ a memory.
 
 PRIVACY
 {privacy}
+{checks}
+PRINTING
+Every page prints cleanly from a web browser (File, then Print, or Ctrl+P):
+black on white, without the menus, and nothing cut across two pages.
+Recordings and videos can't be printed; their transcripts are.
 
 FIELDS IN THE CATALOG
 {fields}
 
 If a later version of the app reads this folder, it upgrades a copy of the
 catalog and leaves this one unchanged.
+";
+
+/// How to check the files against manifest-sha256.txt (sprint 19).
+const CHECKS_TXT: &str = "
+CHECKING THAT NO FILE WAS DAMAGED
+manifest-sha256.txt lists a SHA-256 checksum for every file in this folder,
+in the manifest format of BagIt (RFC 8493, used by libraries and archives).
+If a checksum no longer matches, that file has changed or been damaged; use
+another copy of the folder. To check every file:
+  Windows (PowerShell, in this folder):
+    Get-Content manifest-sha256.txt | ForEach-Object { $h, $f = $_ -split '  ', 2;
+      if ((Get-FileHash -Algorithm SHA256 -LiteralPath $f).Hash -ne $h) { \"Changed: $f\" } }
+  Mac or Linux (Terminal, in this folder):
+    shasum -a 256 -c manifest-sha256.txt
 ";
 
 fn field_words(k: &str) -> &'static str {

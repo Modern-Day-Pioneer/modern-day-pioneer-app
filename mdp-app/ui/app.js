@@ -693,11 +693,33 @@ function rowActions(it, other) {
   return el('div', { class: 'menuwrap' }, el('span', { class: 'split', role: 'group', 'aria-label': `Actions for ${it.name}` }, main, toggle), menu);
 }
 
+// At most three pictures are made at once, so a long list after a big import
+// doesn't start dozens of FFmpeg runs together. Asking twice for the same
+// picture waits for the first answer.
+const thumbRuns = { busy: 0, queue: [], pending: new Map() };
+function thumbOf(id) {
+  if (thumbRuns.pending.has(id)) return thumbRuns.pending.get(id);
+  const p = new Promise((resolve) => {
+    const run = async () => {
+      thumbRuns.busy++;
+      try { resolve(await invoke('thumbnail', { id }).catch(() => null)); } finally {
+        thumbRuns.busy--;
+        thumbRuns.pending.delete(id);
+        const next = thumbRuns.queue.shift();
+        if (next) next();
+      }
+    };
+    if (thumbRuns.busy < 3) run(); else thumbRuns.queue.push(run);
+  });
+  thumbRuns.pending.set(id, p);
+  return p;
+}
+
 async function loadThumb(it) {
   if (it.kind !== 'picture' && it.kind !== 'video') return;
   let url = thumbs.get(it.id);
   if (url === undefined) {
-    url = await invoke('thumbnail', { id: it.id }).catch(() => null);
+    url = await thumbOf(it.id);
     thumbs.set(it.id, url);
   }
   // Home and Waiting can both show the item.
@@ -1053,6 +1075,7 @@ async function loadSettings() {
   $('#s-folder').value = PHONE ? settings.journey_folder_shown : settings.journey_folder;
   $('#s-export').value = PHONE ? settings.export_folder_shown : settings.export_folder;
   $('#s-tips').checked = settings.suggestions;
+  $('#s-checks').checked = !!settings.export_checksums;
   suggestOn = settings.suggestions;
   $('#s-folder-warn').hidden = !settings.folder_warning;
   $('#s-folder-warn').textContent = settings.folder_warning || '';
@@ -1063,7 +1086,7 @@ $('#settings-form').addEventListener('submit', async (ev) => {
   try {
     await invoke('save_settings', { settings: { ...settings,
       author: $('#s-author').value, living_people: $('#s-living').value, exact_places: $('#s-places').value,
-      front_door: $('#s-front').value, export_style: $('#s-style').value, suggestions: $('#s-tips').checked, export_folder: PHONE ? settings.export_folder : $('#s-export').value } });
+      front_door: $('#s-front').value, export_style: $('#s-style').value, export_checksums: $('#s-checks').checked, suggestions: $('#s-tips').checked, export_folder: PHONE ? settings.export_folder : $('#s-export').value } });
     toast('Settings saved.');
     await loadSettings();
   } catch (e) { showError(e); }

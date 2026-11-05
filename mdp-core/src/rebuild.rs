@@ -472,11 +472,11 @@ impl Journey {
                 ids.map.insert(id, made);
             }
             // Events and who took part.
-            const KINDS: [&str; 10] = ["birth", "death", "wedding", "divorce", "move", "graduation", "reunion", "funeral", "holiday", "trip"];
+            // A kind the family added comes back as it was typed (sprint 19).
             for n in nodes.iter().filter(|n| ty(n) == "Event") {
                 let Some(id) = new(&ids, n) else { continue };
-                if !n["kind"].as_str().is_some_and(|k| KINDS.contains(&k)) {
-                    report.notes.push(format!("The event \u{201c}{}\u{201d} has a kind this version doesn't know, so it was left out.", n["name"].as_str().unwrap_or_default()));
+                if !n["kind"].as_str().is_some_and(|k| !k.trim().is_empty()) {
+                    report.notes.push(format!("The event \u{201c}{}\u{201d} has no kind, so it was left out.", n["name"].as_str().unwrap_or_default()));
                     continue;
                 }
                 let made = make(a, "event", &id, json!({"kind": n["kind"].as_str().unwrap_or("trip"), "name": n["name"].as_str().unwrap_or("Event"),

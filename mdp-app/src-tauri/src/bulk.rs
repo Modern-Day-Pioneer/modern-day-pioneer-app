@@ -11,7 +11,7 @@ use mdp_core::bulk::{self, Plan, ScanOptions};
 use mdp_core::jobs::JobContext;
 use mdp_core::rebuild;
 use serde::Serialize;
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, Manager, State};
 
 use crate::{applog, begin_import, err, Res, Shared, SkippedView, What};
 
@@ -71,8 +71,10 @@ pub(crate) fn start_scan(state: State<Shared>, folder: String, zips: Option<Vec<
     Ok(())
 }
 
-#[tauri::command]
-pub(crate) fn scan_status(state: State<Shared>) -> Res<Option<ScanStatus>> {
+/// Polled while a folder is looked through: off the main thread, so a busy
+/// Journey never freezes the window.
+#[tauri::command(async)]
+pub(crate) fn scan_status(state: State<'_, Shared>) -> Res<Option<ScanStatus>> {
     let s = state.lock().map_err(err)?;
     let Some(job) = s.scan.as_ref() else { return Ok(None) };
     let p = job.ctx.progress();
@@ -90,10 +92,62 @@ pub(crate) fn scan_status(state: State<Shared>) -> Res<Option<ScanStatus>> {
 
 #[tauri::command]
 pub(crate) fn cancel_scan(state: State<Shared>) -> Res<()> {
-    if let Some(job) = state.lock().map_err(err)?.scan.take() {
+    let mut s = state.lock().map_err(err)?;
+    if let Some(job) = s.scan.take() {
         job.ctx.cancel();
     }
+    // Previews made for the list go with it (sprint 18).
+    if let Some(j) = s.journey.as_ref() {
+        mdp_core::preview::clear(j.root());
+    }
     Ok(())
+}
+
+// ---------- Previews before anything is copied in (sprint 18) ----------
+// Read from the originals only; what they need is kept in the Journey's
+// throwaway cache/preview folder. They run off the main thread, so the
+// screen stays quick while FFmpeg works.
+
+/// The open Journey's folder and the full path of a row's file.
+fn preview_paths(app: &AppHandle, base: &str, file: &str) -> Res<(PathBuf, PathBuf)> {
+    let s = app.state::<Shared>();
+    let s = s.lock().map_err(err)?;
+    let root = s.journey.as_ref().ok_or("No Journey is open.")?.root().to_path_buf();
+    Ok((root, bulk::resolve(base, file)))
+}
+
+async fn off_main<T: Send + 'static>(f: impl FnOnce() -> Res<T> + Send + 'static) -> Res<T> {
+    tauri::async_runtime::spawn_blocking(f).await.map_err(err)?
+}
+
+/// A small picture of a row's picture or video, as a data URL, or nothing.
+#[tauri::command]
+pub(crate) async fn preview_thumb(app: AppHandle, base: String, file: String) -> Res<Option<String>> {
+    use base64::Engine;
+    let (root, src) = preview_paths(&app, &base, &file)?;
+    off_main(move || {
+        let path = mdp_core::preview::thumbnail(&root, &src).map_err(err)?;
+        Ok(path.and_then(|p| std::fs::read(p).ok()).map(|b| format!("data:image/jpeg;base64,{}", base64::engine::general_purpose::STANDARD.encode(b))))
+    })
+    .await
+}
+
+/// The first lines of a row's text file or document, or nothing.
+#[tauri::command]
+pub(crate) async fn preview_lines(app: AppHandle, base: String, file: String) -> Res<Option<String>> {
+    let (root, src) = preview_paths(&app, &base, &file)?;
+    off_main(move || mdp_core::preview::first_lines(&root, &src).map_err(err)).await
+}
+
+/// The path to play a row's recording or video from: the original itself,
+/// or for a file inside a zip, that one file pulled out into the preview
+/// folder. Only this file is opened to the screen, read only.
+#[tauri::command]
+pub(crate) async fn preview_play(app: AppHandle, base: String, file: String) -> Res<String> {
+    let (root, src) = preview_paths(&app, &base, &file)?;
+    let path = off_main(move || mdp_core::preview::readable(&root, &src).map_err(err)).await?;
+    app.asset_protocol_scope().allow_file(&path).map_err(err)?;
+    Ok(path.display().to_string())
 }
 
 #[derive(Serialize)]

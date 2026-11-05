@@ -253,6 +253,108 @@ function folderOf(file) {
   return parts.length > 1 ? parts[parts.length - 2] : '';
 }
 
+// ---------- Previews (sprint 18) ----------
+// Read straight from the originals, never changed. Pictures and videos get a
+// small picture as their row comes into view, a few at a time; recordings
+// and videos play read-only; text shows its first lines. What the previews
+// need is kept in a throwaway folder that is emptied on Cancel, after the
+// import and at app start.
+
+const previews = { got: new Map(), queue: [], busy: 0 };
+const PREVIEWS_AT_ONCE = 3;
+const previewKey = (r) => `${bulk.plan.base}\n${r.file}`;
+const inView = 'IntersectionObserver' in window ? new IntersectionObserver((seen) => {
+  for (const e of seen) {
+    if (!e.isIntersecting) continue;
+    inView.unobserve(e.target);
+    previews.queue.push(e.target);
+    nextPreview();
+  }
+}, { rootMargin: '200px 0px' }) : null;
+journeyResets.push(() => { previews.got.clear(); previews.queue.length = 0; });
+
+function nextPreview() {
+  while (previews.busy < PREVIEWS_AT_ONCE && previews.queue.length) {
+    const slot = previews.queue.shift();
+    if (!slot.isConnected) continue;
+    previews.busy++;
+    loadPreview(slot).finally(() => { previews.busy--; nextPreview(); });
+  }
+}
+
+async function loadPreview(slot) {
+  const { file, want } = slot.dataset;
+  const key = `${bulk.plan.base}\n${file}`;
+  if (!previews.got.has(key)) {
+    const cmd = want === 'lines' ? 'preview_lines' : 'preview_thumb';
+    previews.got.set(key, await invoke(cmd, { base: bulk.plan.base, file }).catch(() => null));
+  }
+  fillPreview(slot, previews.got.get(key));
+}
+
+function fillPreview(slot, got) {
+  if (slot.dataset.want === 'lines') {
+    slot.textContent = got || '';
+    slot.classList.toggle('got', !!got);
+    return;
+  }
+  if (!got) { slot.classList.add('none'); return; }
+  slot.replaceChildren(el('img', { src: got, alt: '' }));
+  slot.classList.add('got');
+}
+
+// The Preview cell, and for text the first lines shown under its name.
+function previewOf(r) {
+  const plays = r.kind === 'voice recording' || r.kind === 'video';
+  const key = previewKey(r);
+  const watch = (slot) => {
+    if (previews.got.has(key)) fillPreview(slot, previews.got.get(key));
+    else if (inView) inView.observe(slot);
+    else { previews.queue.push(slot); nextPreview(); }
+    return slot;
+  };
+  if (r.kind === 'text') {
+    return [kindMark(r.kind), watch(el('span', { class: 'pv-lines', 'data-file': r.file, 'data-want': 'lines' }))];
+  }
+  if (r.kind === 'picture' || r.kind === 'video') {
+    const slot = watch(el('button', { class: 'pv-pic', type: 'button', 'data-file': r.file, 'data-want': 'thumb',
+      'aria-label': plays ? `Play ${r.file}` : `Look at ${r.file}`, title: plays ? 'Play' : 'Look closer',
+      onclick: () => (plays ? playPreview(r) : lookCloser(r)) }, kindMark(r.kind)));
+    return [el('span', { class: 'pv' }, slot, plays ? el('span', { class: 'pv-badge', 'aria-hidden': 'true' }, '\u25B6') : null), null];
+  }
+  if (plays) {
+    return [el('span', { class: 'pv' }, el('button', { class: 'pv-pic pv-play', type: 'button', 'aria-label': `Play ${r.file}`, title: 'Play', onclick: () => playPreview(r) }, kindMark(r.kind)),
+      el('span', { class: 'pv-badge', 'aria-hidden': 'true' }, '\u25B6')), null];
+  }
+  return [null, null];
+}
+
+// A recording or video plays from the original, read only (one pulled out
+// of a zip on its own first).
+async function playPreview(r) {
+  const box = $('#preview-body');
+  $('#preview-h').textContent = r.file;
+  box.replaceChildren(el('p', { class: 'quiet' }, 'Opening…'));
+  $('#preview-dialog').showModal();
+  try {
+    const path = await invoke('preview_play', { base: bulk.plan.base, file: r.file });
+    const media = el(r.kind === 'video' ? 'video' : 'audio', { controls: true, autoplay: true, src: fileUrl(path), 'aria-label': r.file });
+    box.replaceChildren(media);
+  } catch (e) {
+    box.replaceChildren(el('p', {}, String(e)));
+  }
+}
+
+function lookCloser(r) {
+  const got = previews.got.get(previewKey(r));
+  if (!got) return;
+  $('#preview-h').textContent = r.file;
+  $('#preview-body').replaceChildren(el('img', { src: got, alt: r.title || r.file }));
+  $('#preview-dialog').showModal();
+}
+// Closing stops the player.
+$('#preview-dialog').addEventListener('close', () => $('#preview-body').replaceChildren());
+
 function drawRows() {
   const rows = bulk.plan.rows;
   const body = $('#bulk-rows');
@@ -265,9 +367,11 @@ function drawRows() {
     const src = el('span', { class: 'src' }, r.date_source ? `from the ${r.date_source}` : '');
     const tick = el('input', { type: 'checkbox', checked: r.include, 'aria-label': `Bring in ${r.file}`,
       onchange: (e) => { r.include = e.target.checked; tr.classList.toggle('off', !r.include); count(); } });
+    const [look, lines] = previewOf(r);
     const tr = el('tr', { class: r.include ? null : 'off' },
       el('td', {}, tick),
-      el('td', { class: 'file' }, r.file, r.kind ? el('span', { class: 'src' }, r.kind) : null,
+      el('td', { class: 'pv-cell' }, look),
+      el('td', { class: 'file' }, r.file, r.kind ? el('span', { class: 'src' }, r.kind) : null, lines,
         r.people_note || r.place_note || r.note ? el('span', { class: 'note' }, [r.people_note, r.place_note, r.note].filter(Boolean).join(' ')) : null),
       el('td', {}, text('title', 'Title')),
       el('td', {}, text('date', 'Date'), src),
@@ -310,7 +414,7 @@ $('#bulk-zips').addEventListener('click', bulkPickZips);
 $('#add-zips').addEventListener('click', () => { closeAddMenu(false); $('#takeout-dialog').showModal(); });
 $('#takeout-open').addEventListener('click', () => invoke('open_link', { url: 'https://takeout.google.com/settings/takeout/custom/photos' }).catch(showError));
 $('#takeout-choose').addEventListener('click', () => { $('#takeout-dialog').close(); go('bulk'); bulkPickZips(); });
-$('#bulk-cancel').addEventListener('click', () => { invoke('cancel_scan'); $('#bulk-job').hidden = true; clearInterval(scanPolling); });
+$('#bulk-cancel').addEventListener('click', () => { invoke('cancel_scan'); previews.got.clear(); $('#bulk-job').hidden = true; clearInterval(scanPolling); });
 
 const CSV = [{ name: 'Import plan (CSV)', extensions: ['csv'] }];
 $('#bulk-open').addEventListener('click', async () => {
@@ -337,6 +441,7 @@ $('#bulk-sample').addEventListener('click', async () => {
 $('#bulk-go').addEventListener('click', async () => {
   try {
     await invoke('start_plan_import', { plan: bulk.plan, addMissing: $('#bulk-add').checked });
+    previews.got.clear();
     bulkShow(null);
     go('waiting');
     watchImport();

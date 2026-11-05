@@ -92,7 +92,7 @@ function smallBtn(label, sr, onclick, extra = {}) {
 
 async function thumbInto(box, item) {
   if (item.kind !== 'picture' && item.kind !== 'video') return;
-  const url = await invoke('thumbnail', { id: item.id }).catch(() => null);
+  const url = await thumbOf(item.id);
   if (url) box.replaceChildren(el('img', { src: url, alt: '' }));
 }
 
@@ -272,7 +272,7 @@ extraLoaders.story = async (id) => {
   if (v.cover_id) thumbInto(coverBox, { id: v.cover_id, kind: 'picture' });
 
   $('#story-body').replaceChildren(header('h-story', v.name, `${tribute ? 'In memory of page' : 'Story'}${v.focus ? `, about ${v.focus.name}` : ''}`, id),
-    ...[form, el('div', { class: 'row' }, v.cover_id && !tribute ? coverBox : null, cover), tribute ? null : featuredSwitch(id, v.featured, v.name), memories].filter(Boolean));
+    ...spread('#story-body', [form, el('div', { class: 'row' }, v.cover_id && !tribute ? coverBox : null, cover), tribute ? null : featuredSwitch(id, v.featured, v.name)], [memories]));
 };
 
 // The note on an "In memory of" page saying why a memory matters (sprint 13).
@@ -438,10 +438,13 @@ extraLoaders.memory = async (id) => {
   // recordings and notes on the left page, the details on the right (sprint 15).
   items.classList.add('page-left');
   const featured = featuredSwitch(id, v.featured, v.name);
-  for (const part of [form, people, stories, featured]) part?.classList?.add('page-right');
+  // The details sit together on the right page and stay in view while a long
+  // list of photos scrolls on the left, in both looks.
+  $('#memory-body').classList.add('spread');
+  const side = el('div', { class: 'page-right col-stack' }, ...[form, people, stories, featured].filter((x) => x != null));
   // Parts with nothing to show are null; replaceChildren would print them as "null".
   $('#memory-body').replaceChildren(...[header('h-memory', v.name, `Memory${inStories ? ` in ${inStories}` : ''}`, id), memoryNavBar(id),
-    couldAdd, proposals, finished, transcriptProgress(v.items), items, form, people, stories, featured].filter((x) => x != null));
+    couldAdd, proposals, finished, transcriptProgress(v.items), items, side].filter((x) => x != null));
 };
 
 function roleFields(v, current = null) {

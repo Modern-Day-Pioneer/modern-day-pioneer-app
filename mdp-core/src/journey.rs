@@ -155,6 +155,10 @@ impl Journey {
         if !snap.exists() {
             crate::snapshot::take(&self.conn, &snap)?;
         }
+        // 1.6 rebuilds the event table, which needs the links unchecked while it is swapped.
+        if version < 106 {
+            self.conn.execute_batch("PRAGMA foreign_keys = OFF;")?;
+        }
         let tx = self.conn.transaction()?;
         if version < 101 {
             // 1.1: GPS and camera details on pictures and videos (sprint 2).
@@ -185,8 +189,33 @@ impl Journey {
             add_column(&tx, "story", "genre", "TEXT NOT NULL DEFAULT 'story' CHECK (genre IN ('story', 'tribute'))")?;
             add_column(&tx, "story_memory", "note", "TEXT")?;
         }
+        if version < 106 {
+            // 1.6: kinds of event the family adds (sprint 19).
+            // SQLite can't loosen a CHECK in place, so the table is copied.
+            tx.execute_batch(
+                "CREATE TABLE event_new (
+                   id TEXT PRIMARY KEY REFERENCES item(id),
+                   kind TEXT NOT NULL CHECK (kind <> ''),
+                   name TEXT NOT NULL CHECK (name <> ''),
+                   start_date TEXT, start_date_edtf TEXT, end_date TEXT, end_date_edtf TEXT,
+                   place_id TEXT REFERENCES place(id),
+                   description TEXT,
+                   updated TEXT NOT NULL);
+                 INSERT INTO event_new (id, kind, name, start_date, start_date_edtf, end_date, end_date_edtf, place_id, description, updated)
+                   SELECT id, kind, name, start_date, start_date_edtf, end_date, end_date_edtf, place_id, description, updated FROM event;
+                 DROP TABLE event;
+                 ALTER TABLE event_new RENAME TO event;",
+            )?;
+            let broken: i64 = tx.query_row("SELECT count(*) FROM pragma_foreign_key_check", [], |r| r.get(0))?;
+            if broken > 0 {
+                drop(tx);
+                self.conn.execute_batch("PRAGMA foreign_keys = ON;")?;
+                return Err(Error::Invalid("The catalog's events could not be brought up to date; nothing was changed.".into()));
+            }
+        }
         tx.pragma_update(None, "user_version", current)?;
         tx.commit()?;
+        self.conn.execute_batch("PRAGMA foreign_keys = ON;")?;
         let jid = self.id.clone();
         self.act(|a| {
             a.update("journey", crate::id_key(&jid), "format_version", format_version_text().into())

@@ -178,10 +178,10 @@ fn a_format_1_0_catalog_is_upgraded_with_a_snapshot() {
     }
     let mut j = Journey::open(&folder).unwrap();
     let v: i64 = j.conn().pragma_query_value(None, "user_version", |r| r.get(0)).unwrap();
-    assert_eq!(v, 105);
-    assert!(folder.join("snapshots").join("catalog-before-format-1.5.sqlite").is_file());
+    assert_eq!(v, 106);
+    assert!(folder.join("snapshots").join("catalog-before-format-1.6.sqlite").is_file());
     let fv: String = j.conn().query_row("SELECT format_version FROM journey", [], |r| r.get(0)).unwrap();
-    assert_eq!(fv, "1.5");
+    assert_eq!(fv, "1.6");
     assert_eq!(j.undo_depth(), 0);
     let (report, _) = j.import(&[fixtures().join("walter-camera.jpg")], &JobContext::new()).unwrap();
     assert_eq!(report.imported.len(), 1);

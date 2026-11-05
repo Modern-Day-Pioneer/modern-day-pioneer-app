@@ -9,7 +9,7 @@ fn create_makes_folder_catalog_and_version() {
     assert_eq!(j.name().unwrap(), "The Rowans");
     assert!(mdp_core::ids::is_valid(j.id()));
     let v: i64 = j.conn().pragma_query_value(None, "user_version", |r| r.get(0)).unwrap();
-    assert_eq!(v, 105);
+    assert_eq!(v, 106);
     // Every field-list table exists.
     for t in [
         "journey", "featured", "individual", "person", "pet", "individual_relationship", "family",

@@ -209,6 +209,7 @@ fn call(j: &mut Journey, cmd: &str, a: &Value) -> Result<Value, String> {
         "place_view" => to(serde_json::to_value(j.place_view(&s(a, "id")).map_err(e)?))?,
         "update_place" => to(serde_json::to_value(j.update_place(&s(a, "id"), &row(a, "changes")).map_err(e)?))?,
         "merge_places" => to(serde_json::to_value(j.merge_places(&s(a, "keep"), &s(a, "other")).map_err(e)?))?,
+        "event_kinds" => to(serde_json::to_value(j.event_kinds().map_err(e)?))?,
         "add_event" => json!(j
             .add_event(&s(a, "kind"), o(a, "name").as_deref(), &list(a, "people"), &s(a, "when"), o(a, "place").as_deref())
             .map_err(e)?),
@@ -312,6 +313,19 @@ fn call(j: &mut Journey, cmd: &str, a: &Value) -> Result<Value, String> {
             Value::Null
         }
         "scan_status" => SCAN.lock().unwrap().clone().unwrap_or(Value::Null),
+        // Sprint 18: previews read from the originals, as the app makes them.
+        "preview_thumb" => {
+            let src = mdp_core::bulk::resolve(&s(a, "base"), &s(a, "file"));
+            match mdp_core::preview::thumbnail(j.root(), &src).map_err(e)? {
+                Some(p) => {
+                    use base64::Engine;
+                    json!(format!("data:image/jpeg;base64,{}", base64::engine::general_purpose::STANDARD.encode(std::fs::read(p).map_err(|x| x.to_string())?)))
+                }
+                None => Value::Null,
+            }
+        }
+        "preview_lines" => json!(mdp_core::preview::first_lines(j.root(), &mdp_core::bulk::resolve(&s(a, "base"), &s(a, "file"))).map_err(e)?),
+        "preview_play" => json!(mdp_core::preview::readable(j.root(), &mdp_core::bulk::resolve(&s(a, "base"), &s(a, "file"))).map_err(e)?.display().to_string()),
         "cancel_scan" => {
             *SCAN.lock().unwrap() = None;
             Value::Null
@@ -432,7 +446,7 @@ fn call(j: &mut Journey, cmd: &str, a: &Value) -> Result<Value, String> {
         }
         "version_note" => json!({"before": std::env::var("MDP_TEST_BEFORE").ok(), "now": "0.0.0"}),
         "get_settings" => json!({"author": j.author(), "living_people": "leave out", "exact_places": "town only", "front_door": "bookshelf", "export_style": "scrapbook",
-            "suggestions": SUGGEST.load(std::sync::atomic::Ordering::SeqCst),
+            "suggestions": SUGGEST.load(std::sync::atomic::Ordering::SeqCst), "export_checksums": false,
             "journey_folder": j.root().display().to_string(), "export_folder": "", "folder_warning": null}),
         "export_info" => {
             let left = j.export_left_out(mdp_core::export::Privacy::default()).map_err(e)?;

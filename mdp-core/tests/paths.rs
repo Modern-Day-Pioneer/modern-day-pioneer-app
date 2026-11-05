@@ -65,7 +65,7 @@ fn an_export_pointing_outside_brings_nothing_in() {
     let t = tempfile::tempdir().unwrap();
     let src = mdp_core::sample::create(&t.path().join("sample")).unwrap();
     let export = t.path().join("export");
-    src.export(&export, Privacy { living_dates: true, exact_places: true, coffee_table: false, scrapbook: false }, &JobContext::new()).unwrap();
+    src.export(&export, Privacy { living_dates: true, exact_places: true, coffee_table: false, scrapbook: false, checksums: false }, &JobContext::new()).unwrap();
     std::fs::write(t.path().join("secret.txt"), "private").unwrap();
     let cat = export.join(rebuild::EXPORT_CATALOG);
     let mut v: Value = serde_json::from_str(&std::fs::read_to_string(&cat).unwrap()).unwrap();

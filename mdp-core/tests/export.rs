@@ -287,7 +287,7 @@ fn privacy_leaves_out_living_dates_and_exact_places_unless_included() {
     assert!(ex.get_field(exif::Tag::GPSLatitude, exif::In::PRIMARY).is_none(), "GPS removed");
 
     let open = dir.path().join("open");
-    b.j.export(&open, Privacy { living_dates: true, exact_places: true, coffee_table: false, scrapbook: false }, &JobContext::new()).unwrap();
+    b.j.export(&open, Privacy { living_dates: true, exact_places: true, coffee_table: false, scrapbook: false, checksums: false }, &JobContext::new()).unwrap();
     let cat: Value = serde_json::from_str(&std::fs::read_to_string(open.join("catalog.json")).unwrap()).unwrap();
     assert_eq!(find(&cat, &b.ellen).unwrap()["birthDateEdtf"], "1958-03-09");
     assert!(find(&cat, &b.house).unwrap().get("geo").is_some());

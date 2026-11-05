@@ -280,7 +280,7 @@
         <details id="bulk-skipped" hidden><summary id="bulk-skipped-sum"></summary><ul id="bulk-skipped-list"></ul></details>
         <div class="bulk-wrap">
           <table class="bulk-table">
-            <thead><tr><th scope="col"><input type="checkbox" id="bulk-all" aria-label="Bring in every file" checked></th><th scope="col">File</th><th scope="col">Title</th><th scope="col">Date</th><th scope="col">People</th><th scope="col">Place</th><th scope="col">Memory</th></tr></thead>
+            <thead><tr><th scope="col"><input type="checkbox" id="bulk-all" aria-label="Bring in every file" checked></th><th scope="col">Preview</th><th scope="col">File</th><th scope="col">Title</th><th scope="col">Date</th><th scope="col">People</th><th scope="col">Place</th><th scope="col">Memory</th></tr></thead>
             <tbody id="bulk-rows"></tbody>
           </table>
         </div>
@@ -356,6 +356,8 @@
         <div class="field"><label for="s-style">Look of the export</label>
           <select id="s-style" aria-describedby="s-style-h"><option value="plain">Plain: quiet paper and type</option><option value="scrapbook">Scrapbook: paper on a wood desk, leather and stitching</option></select>
           <p class="hint" id="s-style-h">Only the look changes; the pages and files are the same. Printing and high contrast always use the plain look.</p></div>
+        <div class="field"><label class="switch" for="s-checks"><input type="checkbox" id="s-checks" aria-describedby="s-checks-h">Add a checksum list to the export</label>
+          <p class="hint" id="s-checks-h">A list (manifest-sha256.txt, in the BagIt format libraries use) to check years later that no file was damaged. ABOUT-THIS-FOLDER.txt says how. Takes a little longer.</p></div>
         <section class="field wide speech" aria-labelledby="h-speech"><h2 id="h-speech" class="h3like">Speech to text</h2>
           <div id="speech"><p class="quiet">Looking for the speech model…</p></div></section>
         <div class="field"><label for="s-folder">Journey folder</label>
@@ -408,6 +410,14 @@
 </dialog>
 
 <!-- Bring in from Google Photos: the steps, then the zip files are chosen. -->
+<dialog class="ask preview-dialog" id="preview-dialog" aria-labelledby="preview-h">
+  <form method="dialog" novalidate>
+    <h2 id="preview-h"></h2>
+    <div id="preview-body"></div>
+    <p class="hint">Played from the original file, which stays as it is.</p>
+    <div class="btns"><button class="btn" type="submit" value="close">Close</button></div>
+  </form>
+</dialog>
 <dialog class="ask" id="takeout-dialog" aria-labelledby="takeout-h">
   <form method="dialog" novalidate>
     <h2 id="takeout-h">Bring in from Google Photos</h2>

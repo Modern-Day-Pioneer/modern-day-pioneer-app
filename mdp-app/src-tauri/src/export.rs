@@ -30,7 +30,7 @@ struct Job {
 
 fn privacy_of(root: &std::path::Path) -> Privacy {
     let js = load_journey_settings(root);
-    Privacy::from_settings(&js.living_people, &js.exact_places).with_front_door(&js.front_door).with_export_style(&js.export_style)
+    Privacy::from_settings(&js.living_people, &js.exact_places).with_front_door(&js.front_door).with_export_style(&js.export_style).with_checksums(js.export_checksums)
 }
 
 #[derive(Serialize)]

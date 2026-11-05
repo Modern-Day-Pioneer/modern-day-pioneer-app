@@ -931,6 +931,10 @@ pub struct PlanReport {
     pub duplicates: usize,
     /// People, places and dates that could not be used, in plain words.
     pub notes: Vec<String>,
+    /// Each original brought in and the ID of its new content, so its
+    /// preview picture can become its thumbnail (sprint 18).
+    #[serde(skip)]
+    pub made: Vec<(PathBuf, String)>,
 }
 
 /// Split `June Rowan (in the picture)` into the name and the role.
@@ -1036,6 +1040,7 @@ impl Journey {
                 made.insert(p.source.clone(), (id, p.kind.to_string()));
             }
             report.imported = made.len();
+            report.made = made.iter().map(|(src, (id, _))| (src.clone(), id.clone())).collect();
             // Rows to memories, in the plan's order.
             let mut groups: Vec<Group> = Vec::new();
             let mut by_name: HashMap<String, usize> = HashMap::new();

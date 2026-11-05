@@ -8,6 +8,7 @@ from opening fails CI before it reaches anyone.
 
 1.4 was made by the main branch at sprint 12 (app 0.12.x, the tester builds).
 1.5 was made by sprint 13.
+1.6 was made by sprint 18 (kinds of event the family adds, sprint 19 work).
 
 When the format version goes up, save a sample for the new version:
     cargo run --example release_sample -- tests/fixtures/releases/<format>

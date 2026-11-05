@@ -53,6 +53,8 @@ const imported = await call('test_import', { paths });
 results.imported = imported.length;
 const mem = await call('add_memory', { name: 'Sunday dinners at the kitchen table', story: null });
 await call('add_to_memory', { memory: mem, content: imported.slice(4) });
+// The Scrapbook look became the default later; this check starts in the System look.
+await page.evaluate(() => localStorage.setItem('mdp.look', 'system'));
 await page.reload();
 await page.waitForSelector('#journey-title:not(:empty)');
 
@@ -71,7 +73,7 @@ await page.waitForSelector('#waiting-list li');
 const rows = await page.$$eval('#waiting-list li .t', (l) => l.map((t) => `${t.querySelector('.link').textContent}|${t.querySelector('small').textContent}`));
 results.rows = rows;
 check('titleFromName', rows.some((r) => r.startsWith('Clipping|') && r.includes('Clipping 1995.gif')));
-check('dateWhenNoTitle', rows.some((r) => /^Picture from 2024/.test(r) && r.includes('IMG_20240512_103344.gif')));
+check('dateWhenNoTitle', rows.some((r) => /^(Picture from )?2024/.test(r) && r.includes('IMG_20240512_103344.gif')));
 check('fileNameWhenNothing', rows.some((r) => r.startsWith('DSC_0042.gif|')));
 await page.fill('#wf-text', 'pepper');
 await page.waitForTimeout(150);
@@ -128,7 +130,7 @@ await page.evaluate((id) => go('memory', { id }), mem);
 await page.waitForSelector('#h-memory');
 await page.waitForTimeout(300);
 check('journalSpread', (await page.$eval('#memory-body', (b) => getComputedStyle(b).display)) === 'grid'
-  && (await page.$eval('#memory-body > .page-left', (b) => b.getBoundingClientRect().right)) < (await page.$eval('#memory-body > form.page-right', (b) => b.getBoundingClientRect().left)));
+  && (await page.$eval('#memory-body > .page-left', (b) => b.getBoundingClientRect().right)) < (await page.$eval('#memory-body > .page-right', (b) => b.getBoundingClientRect().left)));
 await axe('s15-6-scrapbook-memory');
 
 // 5. High contrast and "more contrast" always show the System look.

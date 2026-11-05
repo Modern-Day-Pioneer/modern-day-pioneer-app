@@ -80,6 +80,31 @@ pub fn copies(src: &Path, format: &str, dir: &Path, id: &str) -> Result<Vec<Made
     Ok(made)
 }
 
+/// The words of a document for a preview before it is brought in (sprint
+/// 18): read straight from the file, never changed. A PDF gives its first
+/// pages' text; a Word 97 file (.doc) needs Word or LibreOffice, so it has none.
+pub fn first_text(src: &Path, format: &str) -> Option<String> {
+    let text = match format {
+        DOCX => zip_text(src, "word/document.xml").map(|x| docx_text(&x)),
+        ODT => zip_text(src, "content.xml").map(|x| odt_text(&x)),
+        RTF => std::fs::read(src).ok().map(|b| rtf_text(&b)),
+        PDF => {
+            let lib = pdfium()?;
+            let doc = lib.load_pdf_from_file(src, None).ok()?;
+            let mut t = String::new();
+            for page in doc.pages().iter().take(2) {
+                if let Ok(p) = page.text() {
+                    t.push_str(p.all().trim());
+                    t.push('\n');
+                }
+            }
+            Some(t)
+        }
+        _ => None,
+    }?;
+    Some(text).filter(|t| !t.trim().is_empty())
+}
+
 // ------------------------------------------------------------------ PDFium
 
 /// PDFium: `MDP_PDFIUM`, then beside the app, then the system's.

@@ -169,6 +169,12 @@ pub fn add_event(state: State<Shared>, kind: String, name: Option<String>, peopl
     with_journey(&state, |j| j.add_event(&kind, name.as_deref(), &people, &when, place.as_deref()))
 }
 
+/// This Journey's kinds of event: the fixed ones and the family's own (sprint 19).
+#[tauri::command]
+pub fn event_kinds(state: State<Shared>) -> Res<Vec<mdp_core::places::EventKind>> {
+    with_journey(&state, |j| j.event_kinds())
+}
+
 #[tauri::command]
 pub fn event_view(state: State<Shared>, id: String) -> Res<EventView> {
     with_journey(&state, |j| j.event_view(&id))

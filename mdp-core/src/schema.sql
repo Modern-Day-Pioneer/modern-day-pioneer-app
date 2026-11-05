@@ -103,8 +103,9 @@ CREATE TABLE place (
 
 CREATE TABLE event (
   id              TEXT PRIMARY KEY REFERENCES item(id),
-  kind            TEXT NOT NULL CHECK (kind IN ('birth', 'death', 'wedding', 'divorce', 'move',
-                    'graduation', 'reunion', 'funeral', 'holiday', 'trip')),
+  -- One of the fixed kinds (birth, death, wedding, divorce, move, graduation,
+  -- reunion, funeral, holiday, trip) or a kind the family added, as typed (1.6).
+  kind            TEXT NOT NULL CHECK (kind <> ''),
   name            TEXT NOT NULL CHECK (name <> ''),
   start_date      TEXT,
   start_date_edtf TEXT,

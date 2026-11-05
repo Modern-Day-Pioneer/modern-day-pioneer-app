@@ -50,18 +50,21 @@ pub struct Privacy {
     /// Add the Scrapbook stylesheet over the plain one (the setting
     /// "scrapbook", sprint 17). The pages are the same either way.
     pub scrapbook: bool,
+    /// Add `manifest-sha256.txt`, a checksum for every file in BagIt's
+    /// manifest format, so a damaged copy can be found later (sprint 19).
+    pub checksums: bool,
 }
 
 impl Default for Privacy {
     fn default() -> Self {
-        Privacy { living_dates: false, exact_places: false, coffee_table: false, scrapbook: false }
+        Privacy { living_dates: false, exact_places: false, coffee_table: false, scrapbook: false, checksums: false }
     }
 }
 
 impl Privacy {
     /// From the settings' words: "leave out" or "include", "town only" or "exact".
     pub fn from_settings(living_people: &str, exact_places: &str) -> Privacy {
-        Privacy { living_dates: living_people == "include", exact_places: exact_places == "exact", coffee_table: false, scrapbook: false }
+        Privacy { living_dates: living_people == "include", exact_places: exact_places == "exact", coffee_table: false, scrapbook: false, checksums: false }
     }
     /// The same with the front door: "bookshelf" or "coffee table".
     pub fn with_front_door(self, front_door: &str) -> Privacy {
@@ -70,6 +73,10 @@ impl Privacy {
     /// The same with the export's look: "plain" or "scrapbook" (sprint 17).
     pub fn with_export_style(self, style: &str) -> Privacy {
         Privacy { scrapbook: style == "scrapbook", ..self }
+    }
+    /// The same with or without the checksum list (sprint 19).
+    pub fn with_checksums(self, checksums: bool) -> Privacy {
+        Privacy { checksums, ..self }
     }
 }
 
@@ -973,6 +980,10 @@ pub fn write(plan: &Plan, dest: &Path, ctx: &JobContext) -> Result<Report> {
     let n = pages::render(&cat, &out, &|u: &str| u.to_string(), &text, plan.privacy, None)?;
     ctx.advance("Making the pages");
     ctx.check()?;
+    if plan.privacy.checksums {
+        ctx.message("Listing a checksum for every file");
+        write_manifest(&out, ctx)?;
+    }
 
     // Swap in the new export: the old one is moved aside first, and put back if anything fails.
     ctx.message("Replacing the previous export");
@@ -1068,6 +1079,60 @@ impl Journey {
         let p = plan(self, privacy)?;
         preview(&p, self.root())
     }
+}
+
+/// The checksum list in an export (sprint 19).
+pub const MANIFEST_FILE: &str = "manifest-sha256.txt";
+
+/// Every file under `dir`, as paths with `/` from `dir`, A to Z.
+fn all_files(dir: &Path) -> Result<Vec<String>> {
+    let mut out = Vec::new();
+    let mut todo = vec![dir.to_path_buf()];
+    while let Some(d) = todo.pop() {
+        for e in std::fs::read_dir(&d)? {
+            let p = e?.path();
+            if p.is_dir() {
+                todo.push(p);
+            } else if let Ok(r) = p.strip_prefix(dir) {
+                out.push(r.components().map(|c| c.as_os_str().to_string_lossy().into_owned()).collect::<Vec<_>>().join("/"));
+            }
+        }
+    }
+    out.sort();
+    Ok(out)
+}
+
+/// Write `manifest-sha256.txt`: one line per file, its SHA-256 then two
+/// spaces then its path, as BagIt (RFC 8493) manifests and `sha256sum -c`
+/// read them. The export keeps its own layout (the front door at the top),
+/// so the list is BagIt's manifest, not a whole bag.
+pub fn write_manifest(dir: &Path, ctx: &JobContext) -> Result<usize> {
+    let mut lines = String::new();
+    let files = all_files(dir)?;
+    let mut n = 0;
+    for f in files.iter().filter(|f| *f != MANIFEST_FILE) {
+        ctx.check()?;
+        let (sha, _) = crate::import::checksum(&dir.join(f.replace('/', std::path::MAIN_SEPARATOR_STR)))?;
+        lines.push_str(&format!("{sha}  {f}\n"));
+        n += 1;
+    }
+    std::fs::write(dir.join(MANIFEST_FILE), lines)?;
+    Ok(n)
+}
+
+/// Check an export against its checksum list: the files that are missing
+/// or changed. Empty when every file is as it was.
+pub fn check_manifest(dir: &Path) -> Result<Vec<String>> {
+    let text = std::fs::read_to_string(dir.join(MANIFEST_FILE))?;
+    let mut bad = Vec::new();
+    for line in text.lines().filter(|l| !l.trim().is_empty()) {
+        let Some((sha, path)) = line.split_once("  ") else { continue };
+        match crate::import::checksum(&dir.join(path.replace('/', std::path::MAIN_SEPARATOR_STR))) {
+            Ok((s, _)) if s == sha => {}
+            _ => bad.push(path.to_string()),
+        }
+    }
+    Ok(bad)
 }
 
 /// Every item in the catalog by `@id`, for the page templates.

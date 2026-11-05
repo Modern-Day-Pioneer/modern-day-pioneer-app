@@ -14,9 +14,43 @@ use crate::people::{date_value, events_of, list, memories_of, name_of, row, sync
 use crate::summary::Entry;
 use crate::{id_key, Action, Error, Journey, Result, Row};
 
-/// The fixed event kinds.
+/// The fixed event kinds. A family can add its own (sprint 19): an added kind is kept as typed on its events, such as
+/// "Mission" or "Baptism", and offered again in that Journey's list.
 pub const EVENT_KINDS: &[&str] =
     &["birth", "death", "wedding", "divorce", "move", "graduation", "reunion", "funeral", "holiday", "trip"];
+
+/// The longest name an added kind of event can have.
+pub const KIND_MAX: usize = 40;
+
+/// One kind of event in a Journey's list.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct EventKind {
+    /// What is stored on the event: a fixed kind's key, or an added kind as typed.
+    pub key: String,
+    pub label: String,
+    /// Added by the family.
+    pub added: bool,
+    /// Events of this kind in the Journey.
+    pub events: usize,
+}
+
+/// A fixed kind's name in words.
+pub fn kind_label(kind: &str) -> String {
+    match kind {
+        "birth" => "Birth",
+        "death" => "Death",
+        "wedding" => "Wedding",
+        "divorce" => "Divorce",
+        "move" => "Move",
+        "graduation" => "Graduation",
+        "reunion" => "Reunion",
+        "funeral" => "Funeral",
+        "holiday" => "Holiday",
+        "trip" => "Trip",
+        other => other,
+    }
+    .to_string()
+}
 
 #[derive(Debug, Clone, Serialize)]
 pub struct PlaceView {
@@ -96,19 +130,7 @@ fn join_names(names: &[String]) -> String {
 /// A name for an event from its kind and who took part, such as "Birth of June Rowan".
 pub fn suggest_event_name(kind: &str, names: &[String]) -> String {
     let who = join_names(names);
-    let label = match kind {
-        "birth" => "Birth",
-        "death" => "Death",
-        "wedding" => "Wedding",
-        "divorce" => "Divorce",
-        "move" => "Move",
-        "graduation" => "Graduation",
-        "reunion" => "Reunion",
-        "funeral" => "Funeral",
-        "holiday" => "Holiday",
-        "trip" => "Trip",
-        other => other,
-    };
+    let label = kind_label(kind);
     if who.is_empty() {
         return label.to_string();
     }
@@ -119,6 +141,50 @@ pub fn suggest_event_name(kind: &str, names: &[String]) -> String {
 }
 
 impl Journey {
+    /// The kinds of event this Journey offers: the fixed ones, then the
+    /// ones the family added (A to Z), each with how many events have it.
+    pub fn event_kinds(&self) -> Result<Vec<EventKind>> {
+        let mut used: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+        let mut st = self.conn().prepare("SELECT kind, count(*) FROM event GROUP BY kind")?;
+        for r in st.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?)))? {
+            let (k, n) = r?;
+            used.insert(k, n as usize);
+        }
+        let mut out: Vec<EventKind> = EVENT_KINDS
+            .iter()
+            .map(|k| EventKind { key: k.to_string(), label: kind_label(k), added: false, events: used.get(*k).copied().unwrap_or(0) })
+            .collect();
+        let mut added: Vec<EventKind> = used
+            .iter()
+            .filter(|(k, _)| !EVENT_KINDS.contains(&k.as_str()))
+            .map(|(k, n)| EventKind { key: k.clone(), label: k.clone(), added: true, events: *n })
+            .collect();
+        added.sort_by_key(|k| k.label.to_lowercase());
+        out.extend(added);
+        Ok(out)
+    }
+
+    /// The kind to store for one chosen or typed: a fixed kind by its key or
+    /// name, a kind already added with the same spelling as before (so
+    /// "mission" and "Mission" stay one kind), or a new kind as typed.
+    pub fn event_kind_for(&self, typed: &str) -> Result<String> {
+        let t = typed.split_whitespace().collect::<Vec<_>>().join(" ");
+        if t.is_empty() {
+            return Err(Error::Invalid("Choose or type a kind of event.".into()));
+        }
+        if t.chars().count() > KIND_MAX {
+            return Err(Error::Invalid(format!("A kind of event can be at most {KIND_MAX} letters long.")));
+        }
+        let low = t.to_lowercase();
+        if let Some(k) = EVENT_KINDS.iter().find(|k| **k == low) {
+            return Ok(k.to_string());
+        }
+        if let Some(k) = self.event_kinds()?.into_iter().find(|k| k.label.to_lowercase() == low) {
+            return Ok(k.key);
+        }
+        Ok(t)
+    }
+
     /// Which table holds an item ("individual", "family", "place", "event", ...),
     /// so a screen can open the right view.
     pub fn item_table(&self, id: &str) -> Result<String> {
@@ -257,10 +323,7 @@ impl Journey {
     /// Add an event of a fixed kind. With no name, one is suggested from the
     /// kind and who took part. `when` is typed as known.
     pub fn add_event(&mut self, kind: &str, name: Option<&str>, people: &[String], when: &str, place: Option<&str>) -> Result<String> {
-        let kind = kind.trim().to_lowercase();
-        if !EVENT_KINDS.contains(&kind.as_str()) {
-            return Err(Error::Invalid(format!("\"{kind}\" isn't one of the event kinds.")));
-        }
+        let kind = self.event_kind_for(kind)?;
         let date = dates::parse(when)?;
         let mut names = vec![];
         for p in people {
@@ -304,11 +367,12 @@ impl Journey {
             return Err(Error::Invalid("That event is no longer in the Journey.".into()));
         }
         let mut parsed = std::collections::HashMap::new();
+        let mut parsed_kind: Option<String> = None;
         for (k, v) in changes {
             match k.as_str() {
                 "name" if text_value(Some(v)).is_null() => return Err(Error::Invalid("An event needs a name.".into())),
-                "kind" if !EVENT_KINDS.contains(&v.as_str().unwrap_or_default()) => {
-                    return Err(Error::Invalid("Choose one of the event kinds.".into()));
+                "kind" => {
+                    parsed_kind = Some(self.event_kind_for(v.as_str().unwrap_or_default())?);
                 }
                 "start" | "end" => {
                     parsed.insert(k.clone(), dates::parse(v.as_str().unwrap_or_default())?);
@@ -320,7 +384,7 @@ impl Journey {
                         }
                     }
                 }
-                "name" | "kind" | "description" => {}
+                "name" | "description" => {}
                 _ => return Err(Error::Invalid(format!("{k} can't be changed on an event."))),
             }
         }
@@ -333,6 +397,7 @@ impl Journey {
                         a.update("event", id_key(id), edtf, json!(d.as_ref().map(|d| d.edtf.clone())))?;
                         a.update("event", id_key(id), col, json!(d.and_then(|d| d.nearest)))?;
                     }
+                    "kind" => a.update("event", id_key(id), "kind", json!(parsed_kind.clone()))?,
                     f => a.update("event", id_key(id), f, text_value(Some(v)))?,
                 }
             }

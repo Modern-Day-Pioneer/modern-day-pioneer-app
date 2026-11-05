@@ -60,6 +60,29 @@ function selectField(label, value, options) {
   return box;
 }
 
+// Kind of event (sprint 19): the fixed kinds, then the
+// ones this family added, and "Add a new kind…" to type one. An added kind
+// is offered again for every event in this Journey.
+const NEW_KIND = '__new';
+async function eventKinds() { return invoke('event_kinds').catch(() => (CHOICES?.event_kinds || []).map((k) => ({ key: k, label: cap(k), added: false }))); }
+function kindField(label, value, kinds) {
+  const id = nextId('f');
+  const newId = nextId('f');
+  const opts = kinds.filter((k) => !k.added).map((k) => el('option', { value: k.key, selected: k.key === value }, k.label));
+  const added = kinds.filter((k) => k.added);
+  const sel = el('select', { id }, ...opts,
+    added.length ? el('optgroup', { label: 'Added by your family' }, ...added.map((k) => el('option', { value: k.key, selected: k.key === value }, k.label))) : null,
+    el('option', { value: NEW_KIND }, 'Add a new kind…'));
+  const typed = el('input', { id: newId, autocomplete: 'off', maxlength: 40, placeholder: 'Mission, baptism, homecoming…' });
+  const newBox = el('div', { class: 'newkind', hidden: true }, el('label', { for: newId }, 'New kind of event'), typed);
+  sel.addEventListener('change', () => { newBox.hidden = sel.value !== NEW_KIND; if (!newBox.hidden) typed.focus(); });
+  const box = el('div', { class: 'field' }, el('label', { for: id }, label), sel, newBox);
+  box.input = { type: 'select', get value() { return sel.value === NEW_KIND ? typed.value : sel.value; } };
+  box.select = sel;
+  box.initial = value || '';
+  return box;
+}
+
 function changed(fields) {
   const out = {};
   for (const [k, f] of Object.entries(fields)) {
@@ -187,6 +210,15 @@ async function removeWithWarning(id, name, back = true) {
     await act(invoke('remove_item', { id }), `${name} is removed.`);
     if (back) goBack();
   } catch (e) { showError(e); }
+}
+
+// A detail page on a wide window: the list (photos, memories) on the left
+// scrolls, and the details on the right stay in view beside it. On a narrow
+// window the details come first. Empty parts are left out.
+function spread(sheet, side, main) {
+  $(sheet).classList.add('spread');
+  return [el('div', { class: 'page-right col-stack' }, ...side.filter((x) => x != null)),
+    el('div', { class: 'page-left col-stack' }, ...main.filter((x) => x != null))];
 }
 
 function header(hId, title, kindLine, id) {
@@ -498,7 +530,7 @@ extraLoaders.person = async (id) => {
   const portrait = await portraitSection(id, v.name);
   const tributes = await tributeSection(v);
   $('#person-body').replaceChildren(header('h-person', v.name, pet ? `Pet${v.species ? `, ${v.species}` : ''}` : 'Person', id),
-    portrait, form, families, relationships, events, storiesOf(v), tributes, memories, merge);
+    ...spread('#person-body', [portrait, form, families, relationships, events, storiesOf(v), tributes, merge], [memories]));
 };
 
 // "In memory of" pages about this person or pet (sprint 13): chosen
@@ -575,16 +607,21 @@ function addRelationship(v, c) {
 
 // Add an event with these people already in it, then open it.
 function addEventLine(people, label) {
-  const kindId = nextId('k');
-  const kind = el('select', { id: kindId }, ...(CHOICES?.event_kinds || []).map((k) => el('option', { value: k }, cap(k))));
+  const kind = kindField('Kind of event', 'birth', (CHOICES?.event_kinds || []).map((k) => ({ key: k, label: cap(k), added: false })));
+  // The family's own kinds join the list once read.
+  eventKinds().then((kinds) => {
+    const fresh = kindField('Kind of event', kind.input.value, kinds);
+    kind.replaceWith(fresh);
+    Object.assign(kind, { input: fresh.input });
+  });
   const when = dateField('When', null, { hint: 'Optional. "about 1970", "June 1956".' });
   const form = el('form', { class: 'addline', 'aria-label': label },
-    el('div', { class: 'field' }, el('label', { for: kindId }, 'Kind of event'), kind), when,
+    kind, when,
     el('button', { class: 'btn primary', type: 'submit' }, 'Add event'));
   form.addEventListener('submit', async (ev) => {
     ev.preventDefault();
     try {
-      const id = await act(invoke('add_event', { kind: kind.value, name: null, people, when: when.input.value, place: null }), 'Event added.');
+      const id = await act(invoke('add_event', { kind: kind.input.value, name: null, people, when: when.input.value, place: null }), 'Event added.');
       await saveTyped();
       go('event', { id });
     } catch { /* shown */ }
@@ -622,7 +659,7 @@ extraLoaders.family = async (id) => {
   const events = section('Events', lines(v.events, (e) => linkLine(e), 'No events yet.'), addEventLine([id], `Add an event with ${v.name}`));
   const memories = section('Memories', lines(withCovers(v.memories, await memoryCovers()), (m) => linkLine({ ...m, note: m.note ? `Role: ${m.note}` : '' }), 'Not in any memory yet.'),
     linkMemoryForm(id));
-  $('#family-body').replaceChildren(header('h-family', v.name, 'Family', id), form, members, related, events, storiesOf(v), memories);
+  $('#family-body').replaceChildren(header('h-family', v.name, 'Family', id), ...spread('#family-body', [form, members, related, events, storiesOf(v)], [memories]));
 };
 
 // ---------- Places and events list ----------
@@ -679,18 +716,18 @@ extraLoaders.place = async (id) => {
         await act(invoke('merge_places', { keep: id, other: oid }), `${oname} is merged into ${v.name}.`);
         reload();
       } })));
-  $('#place-body').replaceChildren(header('h-place', v.name, 'Place', id), form,
-    section('Events here', lines(v.events, (e) => linkLine(e), 'No events here.')),
-    section('Memories here', lines(withCovers(v.memories, await memoryCovers()), (m) => linkLine(m), 'No memories here yet.'),
-      el('div', { class: 'btns' }, el('button', { class: 'btn', type: 'button', onclick: () => addMemoriesTo('place_id', id, v.name) }, 'Add memories already in the Journey…'))), merge);
+  const here = section('Memories here', lines(withCovers(v.memories, await memoryCovers()), (m) => linkLine(m), 'No memories here yet.'),
+    el('div', { class: 'btns' }, el('button', { class: 'btn', type: 'button', onclick: () => addMemoriesTo('place_id', id, v.name) }, 'Add memories already in the Journey…')));
+  $('#place-body').replaceChildren(header('h-place', v.name, 'Place', id),
+    ...spread('#place-body', [form, section('Events here', lines(v.events, (e) => linkLine(e), 'No events here.')), merge], [here]));
 };
 
 // ---------- One event ----------
 
 extraLoaders.event = async (id) => {
-  const [v, c] = await Promise.all([invoke('event_view', { id }), choices()]);
+  const [v, kinds] = await Promise.all([invoke('event_view', { id }), eventKinds()]);
   const f = {
-    kind: selectField('Kind of event', v.kind, c.event_kinds.map((k) => [k, cap(k)])),
+    kind: kindField('Kind of event', v.kind, kinds),
     name: textField('Name', v.name, { required: true }),
     start: dateField(v.end ? 'Starts' : 'When', v.start),
     end: dateField('Ends (optional)', v.end, { hint: 'For a trip or anything that lasted a while.' }),
@@ -729,7 +766,7 @@ extraLoaders.event = async (id) => {
 
   const memories = section('Memories', lines(withCovers(v.memories, await memoryCovers()), (m) => linkLine(m), 'No memories linked to this event yet.'),
     el('div', { class: 'btns' }, el('button', { class: 'btn', type: 'button', onclick: () => addMemoriesTo('event_id', id, v.name) }, 'Add memories already in the Journey…')));
-  $('#event-body').replaceChildren(header('h-event', v.name, `Event: ${v.kind}`, id), form, place, people, memories);
+  $('#event-body').replaceChildren(header('h-event', v.name, `Event: ${v.kind}`, id), ...spread('#event-body', [form, place, people], [memories]));
 };
 
 

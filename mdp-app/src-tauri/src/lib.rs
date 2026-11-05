@@ -71,11 +71,13 @@ struct JourneySettings {
     front_door: String,
     /// The export's look: "scrapbook" (default since 2026-11-05, Jared) or "plain" (sprint 17).
     export_style: String,
+    /// Add a checksum list (BagIt manifest) to the export; off by default (sprint 19).
+    export_checksums: bool,
 }
 
 impl Default for JourneySettings {
     fn default() -> Self {
-        JourneySettings { living_people: "leave out".into(), exact_places: "town only".into(), suggestions: true, export_folder: None, last_backup: None, backup_folder: None, export_copy: None, export_copy_name: None, opened_with: None, front_door: "bookshelf".into(), export_style: "scrapbook".into() }
+        JourneySettings { living_people: "leave out".into(), exact_places: "town only".into(), suggestions: true, export_folder: None, last_backup: None, backup_folder: None, export_copy: None, export_copy_name: None, opened_with: None, front_door: "bookshelf".into(), export_style: "scrapbook".into(), export_checksums: false }
     }
 }
 
@@ -101,6 +103,8 @@ impl AppState {
             scan.cancel();
         }
         self.files = FileCheck::default();
+        // Previews from the last folder import are thrown away (sprint 18).
+        mdp_core::preview::clear(j.root());
         self.journey = Some(j);
     }
 }
@@ -286,6 +290,8 @@ fn startup(app: AppHandle, state: State<Shared>) -> Res<Startup> {
     match Journey::open(Path::new(&last)) {
         Ok(mut j) => {
             let home = remember(&app, &mut j)?;
+            // App start: previews left from last time are thrown away (sprint 18).
+            mdp_core::preview::clear(j.root());
             s.journey = Some(j);
             Ok(Startup { journey: Some(home), problem: None })
         }
@@ -404,8 +410,8 @@ fn people(state: State<Shared>) -> Res<Vec<FamilyGroup>> {
     with_journey(&state, |j| j.people_by_family())
 }
 
-#[tauri::command]
-fn waiting(state: State<Shared>) -> Res<Vec<Entry>> {
+#[tauri::command(async)]
+fn waiting(state: State<'_, Shared>) -> Res<Vec<Entry>> {
     with_journey(&state, |j| j.waiting())
 }
 
@@ -424,8 +430,8 @@ fn item(state: State<Shared>, id: String) -> Res<Option<Value>> {
     with_journey(&state, |j| j.item(&id))
 }
 
-#[tauri::command]
-fn raw_content(state: State<Shared>, kind: String) -> Res<Vec<RawItem>> {
+#[tauri::command(async)]
+fn raw_content(state: State<'_, Shared>, kind: String) -> Res<Vec<RawItem>> {
     with_journey(&state, |j| j.raw_content(&kind))
 }
 
@@ -441,13 +447,17 @@ fn delete_raw(state: State<Shared>, ids: Vec<String>) -> Res<()> {
 }
 
 /// A small preview as a data URL, or nothing for recordings and text.
-#[tauri::command]
-fn thumbnail(state: State<Shared>, id: String) -> Res<Option<String>> {
+/// Off the main thread, and FFmpeg runs without holding the Journey, so a
+/// screen full of new thumbnails after a large import doesn't freeze the app.
+#[tauri::command(async)]
+fn thumbnail(state: State<'_, Shared>, id: String) -> Res<Option<String>> {
     use base64::Engine;
-    let path = with_journey(&state, |j| {
-        // No FFmpeg on the phone: pictures get their preview from the image library.
-        Ok(mdp_core::convert::thumbnail(j, &id)?.or_else(|| if cfg!(mobile) { mobile::picture_thumbnail(j, &id) } else { None }))
-    })?;
+    let job = with_journey(&state, |j| mdp_core::convert::thumbnail_job(j, &id))?;
+    let mut path = job.make().map_err(err)?;
+    // No FFmpeg on the phone: pictures get their preview from the image library.
+    if path.is_none() && cfg!(mobile) {
+        path = with_journey(&state, |j| Ok(mobile::picture_thumbnail(j, &id)))?;
+    }
     Ok(path.and_then(|p| std::fs::read(p).ok()).map(|b| {
         format!("data:image/jpeg;base64,{}", base64::engine::general_purpose::STANDARD.encode(b))
     }))
@@ -565,6 +575,9 @@ fn run_import(app: &AppHandle, root: &Path, step: Step, ctx: &JobContext) -> Res
             with(&mut |j| {
                 if let Some(b) = batch.take() {
                     let report = j.finish_plan(b, plan, add)?;
+                    // Each preview picture becomes the new item's thumbnail; the rest go (sprint 18).
+                    mdp_core::preview::reuse(j.root(), &report.made);
+                    mdp_core::preview::clear(j.root());
                     sum.imported = report.imported;
                     sum.duplicates = report.duplicates;
                     sum.memories = report.memories.len();
@@ -639,8 +652,8 @@ struct ImportStatus {
     error: Option<String>,
 }
 
-#[tauri::command]
-fn import_status(state: State<Shared>) -> Res<Option<ImportStatus>> {
+#[tauri::command(async)]
+fn import_status(state: State<'_, Shared>) -> Res<Option<ImportStatus>> {
     let s = state.lock().map_err(err)?;
     let Some(job) = s.import.as_ref() else { return Ok(None) };
     let p = job.ctx.progress();
@@ -726,6 +739,8 @@ struct SettingsView {
     /// "plain" or "scrapbook" (sprint 17).
     #[serde(default)]
     export_style: String,
+    #[serde(default)]
+    export_checksums: bool,
     suggestions: bool,
     journey_folder: String,
     export_folder: String,
@@ -750,6 +765,7 @@ fn get_settings(app: AppHandle, state: State<Shared>) -> Res<SettingsView> {
         exact_places: js.exact_places,
         front_door: js.front_door,
         export_style: js.export_style,
+        export_checksums: js.export_checksums,
         suggestions: js.suggestions,
         journey_folder: j.root().display().to_string(),
         journey_folder_shown: mobile::shown(&app, &j.root().display().to_string()),
@@ -787,6 +803,7 @@ fn save_settings(app: AppHandle, state: State<Shared>, settings: SettingsView) -
         js.export_style = settings.export_style;
     }
     js.suggestions = settings.suggestions;
+    js.export_checksums = settings.export_checksums;
     let default_export = default_export_folder(&app, &j.name().map_err(err)?);
     // The phone has no typed folders; its export copy is chosen with `pick_export_copy`.
     if cfg!(mobile) {
@@ -969,6 +986,9 @@ pub fn run() {
             bulk::start_plan_import,
             bulk::look_at_export,
             bulk::start_export_import,
+            bulk::preview_thumb,
+            bulk::preview_lines,
+            bulk::preview_play,
             import_status,
             cancel_import,
             clear_import,
@@ -1005,6 +1025,7 @@ pub fn run() {
             people::answer_suggestion,
             people::merge_individuals,
             people::add_event,
+            people::event_kinds,
             people::event_view,
             people::update_event,
             people::set_event_people,

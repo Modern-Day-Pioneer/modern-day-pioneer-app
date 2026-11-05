@@ -34,7 +34,10 @@ pub(crate) fn command(exe: &Path) -> Command {
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        c.creation_flags(0x0800_0000); // no console window
+        // No console window, and below-normal priority: conversions and
+        // thumbnails use spare time, so the app's window stays responsive
+        // during a large import.
+        c.creation_flags(0x0800_0000 | 0x0000_4000);
     }
     c
 }
@@ -361,15 +364,58 @@ impl Journey {
     }
 }
 
+/// What making a thumbnail needs, read from the catalog while the Journey
+/// is held; the slow FFmpeg step ([`ThumbJob::make`]) then runs without it,
+/// so the app stays responsive while many thumbnails are made.
+#[derive(Debug, Clone)]
+pub enum ThumbJob {
+    /// Already made.
+    Ready(PathBuf),
+    /// Make it from `src` into `out`, turned `turn` quarter turns.
+    Make { src: PathBuf, out: PathBuf, turn: i64 },
+    /// Not a picture or video, or FFmpeg is missing.
+    None,
+}
+
+impl ThumbJob {
+    /// Run FFmpeg if needed. The source is only read.
+    pub fn make(self) -> Result<Option<PathBuf>> {
+        match self {
+            ThumbJob::Ready(p) => Ok(Some(p)),
+            ThumbJob::None => Ok(None),
+            ThumbJob::Make { src, out, turn } => {
+                let Some(tool) = find_tool() else { return Ok(None) };
+                let dir = out.parent().map(Path::to_path_buf).unwrap_or_default();
+                std::fs::create_dir_all(&dir)?;
+                // Named per call, so two screens asking at once don't share a file.
+                let stem = out.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
+                let tmp = dir.join(format!("{stem}.{}.partial.jpg", crate::ids::new_id()));
+                if !small_jpeg(&tool, &src, &tmp, turn)? {
+                    return Ok(None);
+                }
+                if std::fs::rename(&tmp, &out).is_err() {
+                    let _ = std::fs::remove_file(&tmp);
+                }
+                Ok(out.is_file().then_some(out))
+            }
+        }
+    }
+}
+
 /// A small JPEG preview of a picture or video in `cache/thumbs/`, made on
 /// first use. Deleting the cache loses nothing; previews are made again.
 pub fn thumbnail(j: &Journey, id: &str) -> Result<Option<PathBuf>> {
+    thumbnail_job(j, id)?.make()
+}
+
+/// What [`thumbnail`] would do, without running FFmpeg.
+pub fn thumbnail_job(j: &Journey, id: &str) -> Result<ThumbJob> {
     let dir = j.root().join(crate::folder::CACHE_DIR).join("thumbs");
     // FFmpeg already follows the camera's own turn flag; a turn chosen in the app is added here (sprint 8).
     let turn = j.picture_turn(id)?;
     let out = if turn == 0 { dir.join(format!("{id}.jpg")) } else { dir.join(format!("{id}-t{turn}.jpg")) };
     if out.is_file() {
-        return Ok(Some(out));
+        return Ok(ThumbJob::Ready(out));
     }
     // Prefer the export copy (a JPEG for HEIC and AVIF, a PNG for BMP), then the original.
     let src: Option<(String, String)> = rusqlite::OptionalExtension::optional(j.conn().query_row(
@@ -378,12 +424,18 @@ pub fn thumbnail(j: &Journey, id: &str) -> Result<Option<PathBuf>> {
         [id],
         |r| Ok((r.get(0)?, r.get(1)?)),
     ))?;
-    let (Some((path, _)), Some(tool)) = (src, find_tool()) else { return Ok(None) };
-    std::fs::create_dir_all(&dir)?;
-    let tmp = dir.join(format!("{id}.partial.jpg"));
+    match (src, find_tool()) {
+        (Some((path, _)), Some(_)) => Ok(ThumbJob::Make { src: folder::absolute(j.root(), &path), out, turn }),
+        _ => Ok(ThumbJob::None),
+    }
+}
+
+/// FFmpeg's first frame of a picture or video, 320 pixels wide at most, as
+/// a JPEG at `tmp`. The source is only read. `false` when FFmpeg can't.
+pub(crate) fn small_jpeg(tool: &Tool, src: &Path, tmp: &Path, turn: i64) -> Result<bool> {
     let status = command(&tool.ffmpeg)
         .args(["-nostdin", "-hide_banner", "-loglevel", "error", "-y", "-i"])
-        .arg(folder::absolute(j.root(), &path))
+        .arg(src)
         .args(["-frames:v", "1", "-update", "1", "-vf"])
         .arg(match turn {
             1 => "transpose=1,scale='min(320,iw)':-2",
@@ -392,12 +444,11 @@ pub fn thumbnail(j: &Journey, id: &str) -> Result<Option<PathBuf>> {
             _ => "scale='min(320,iw)':-2",
         })
         .args(["-q:v", "4"])
-        .arg(&tmp)
+        .arg(tmp)
         .status()?;
     if !status.success() || !tmp.is_file() {
-        let _ = std::fs::remove_file(&tmp);
-        return Ok(None);
+        let _ = std::fs::remove_file(tmp);
+        return Ok(false);
     }
-    std::fs::rename(&tmp, &out)?;
-    Ok(Some(out))
+    Ok(true)
 }
