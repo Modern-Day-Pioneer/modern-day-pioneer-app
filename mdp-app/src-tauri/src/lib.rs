@@ -69,13 +69,13 @@ struct JourneySettings {
     opened_with: Option<String>,
     /// The export's front door: "bookshelf" (default) or "coffee table" (sprint 13).
     front_door: String,
-    /// The export's look: "plain" (default) or "scrapbook" (sprint 17).
+    /// The export's look: "scrapbook" (default since 2026-11-05, Jared) or "plain" (sprint 17).
     export_style: String,
 }
 
 impl Default for JourneySettings {
     fn default() -> Self {
-        JourneySettings { living_people: "leave out".into(), exact_places: "town only".into(), suggestions: true, export_folder: None, last_backup: None, backup_folder: None, export_copy: None, export_copy_name: None, opened_with: None, front_door: "bookshelf".into(), export_style: "plain".into() }
+        JourneySettings { living_people: "leave out".into(), exact_places: "town only".into(), suggestions: true, export_folder: None, last_backup: None, backup_folder: None, export_copy: None, export_copy_name: None, opened_with: None, front_door: "bookshelf".into(), export_style: "scrapbook".into() }
     }
 }
 

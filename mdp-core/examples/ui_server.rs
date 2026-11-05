@@ -431,7 +431,7 @@ fn call(j: &mut Journey, cmd: &str, a: &Value) -> Result<Value, String> {
             Value::Null
         }
         "version_note" => json!({"before": std::env::var("MDP_TEST_BEFORE").ok(), "now": "0.0.0"}),
-        "get_settings" => json!({"author": j.author(), "living_people": "leave out", "exact_places": "town only", "front_door": "bookshelf", "export_style": "plain",
+        "get_settings" => json!({"author": j.author(), "living_people": "leave out", "exact_places": "town only", "front_door": "bookshelf", "export_style": "scrapbook",
             "suggestions": SUGGEST.load(std::sync::atomic::Ordering::SeqCst),
             "journey_folder": j.root().display().to_string(), "export_folder": "", "folder_warning": null}),
         "export_info" => {

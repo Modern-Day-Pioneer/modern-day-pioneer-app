@@ -1049,7 +1049,7 @@ async function loadSettings() {
   $('#s-living').value = settings.living_people;
   $('#s-places').value = settings.exact_places;
   $('#s-front').value = settings.front_door || 'bookshelf';
-  $('#s-style').value = settings.export_style || 'plain';
+  $('#s-style').value = settings.export_style || 'scrapbook';
   $('#s-folder').value = PHONE ? settings.journey_folder_shown : settings.journey_folder;
   $('#s-export').value = PHONE ? settings.export_folder_shown : settings.export_folder;
   $('#s-tips').checked = settings.suggestions;
