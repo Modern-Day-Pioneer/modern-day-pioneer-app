@@ -206,7 +206,7 @@ fn shared_date(items: &[&Waiting]) -> Option<(String, DateSource)> {
     None
 }
 
-fn last_folder(path: &str) -> String {
+pub(crate) fn last_folder(path: &str) -> String {
     path.trim_end_matches(['/', '\\']).rsplit(['/', '\\']).next().unwrap_or(path).to_string()
 }
 

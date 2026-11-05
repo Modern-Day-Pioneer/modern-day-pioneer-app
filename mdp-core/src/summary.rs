@@ -42,6 +42,10 @@ pub struct RawItem {
     pub title: Option<String>,
     /// With no date of its own, the date its file name suggests.
     pub name_date: Option<String>,
+    /// The last part of the folder it was brought in from ("" if not known),
+    /// and the day it was brought in: the By box view boxes items per import.
+    pub folder: String,
+    pub added: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -201,7 +205,7 @@ impl Journey {
     /// Raw content in one state ("waiting" or "set aside") for the Waiting screen, newest first.
     pub fn raw_content(&self, state: &str) -> Result<Vec<RawItem>> {
         let mut st = self.conn().prepare(&format!(
-            "SELECT id, name, kind, date FROM content WHERE state = ?1 AND {} ORDER BY date_added DESC, date DESC, name LIMIT 2000",
+            "SELECT id, name, kind, date, coalesce(source_note, ''), date_added FROM content WHERE state = ?1 AND {} ORDER BY date_added DESC, date DESC, name LIMIT 2000",
             crate::voice::NOT_ATTACHED
         ))?;
         let rows = st.query_map([state], |r| {
@@ -210,7 +214,8 @@ impl Journey {
             let name: String = r.get(1)?;
             let name_date = if date.is_none() { crate::sorting::file_name_date(&name) } else { None };
             let date_sort = date_sort.or_else(|| name_date.as_deref().and_then(|d| crate::dates::parse(d).ok().flatten()).and_then(|d| d.nearest));
-            Ok(RawItem { id: r.get(0)?, title: crate::sorting::file_name_title(&name), name, kind: r.get(2)?, date, date_sort, name_date })
+            let folder = crate::sorting::last_folder(&r.get::<_, String>(4)?);
+            Ok(RawItem { id: r.get(0)?, title: crate::sorting::file_name_title(&name), name, kind: r.get(2)?, date, date_sort, name_date, folder, added: r.get(5)? })
         })?;
         Ok(rows.collect::<std::result::Result<_, _>>()?)
     }

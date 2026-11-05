@@ -519,6 +519,7 @@ fn main() {
                         Some("mp3") => "audio/mpeg",
                         Some("flac") => "audio/flac",
                         Some("png") => "image/png",
+                        Some("webp") => "image/webp",
                         Some("wav") => "audio/wav",
                         Some("mp4") => "video/mp4",
                         _ => "application/octet-stream",

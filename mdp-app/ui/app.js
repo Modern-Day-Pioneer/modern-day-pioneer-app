@@ -250,10 +250,15 @@ function viewSwitch(pane) {
   const box = $(`section.pane[data-pane="${pane}"]`);
   box.dataset.view = view;
   const id = `view-${pane}`;
-  const sel = el('select', { id }, ...[['list', 'List'], ['tiles', 'Tiles']].map(([v, t]) => el('option', { value: v, selected: v === view }, t)));
+  // Waiting at scale (sprint 16): grouped By month and By box views too.
+  const views = [['list', 'List'], ['tiles', 'Tiles'], ...(pane === 'waiting' ? [['month', 'By month'], ['box', 'By box']] : [])];
+  if (!views.some(([v]) => v === view)) view = 'list';
+  box.dataset.view = view;
+  const sel = el('select', { id }, ...views.map(([v, t]) => el('option', { value: v, selected: v === view }, t)));
   sel.addEventListener('change', () => {
     box.dataset.view = sel.value;
     try { localStorage.setItem(key, sel.value); } catch { /* not kept */ }
+    if (pane === 'waiting') { openBox = null; paintWaiting(); }
   });
   return el('div', { class: 'field viewswitch' }, el('label', { for: id }, 'Show as'), sel);
 }
@@ -427,7 +432,7 @@ function paintWaiting() {
   $('#n-groups').textContent = `(${groups.length})`;
   for (const t of $$('.tab')) t.setAttribute('aria-pressed', String(t.dataset.state === showing));
   const grouped = showing === 'groups';
-  for (const id of ['waiting-tools', 'sel-bar', 'waiting-list', 'waiting-list-empty', 'waiting-count']) if (grouped) $(`#${id}`).hidden = true;
+  for (const id of ['waiting-tools', 'sel-bar', 'waiting-list', 'waiting-list-empty', 'waiting-count', 'waiting-pages']) if (grouped) $(`#${id}`).hidden = true;
   $('.selall').hidden = grouped;
   $('#group-list').hidden = !grouped;
   if (grouped) { paintGroups(groups); return; }
@@ -441,8 +446,11 @@ function paintWaiting() {
   for (const id of [...ticked]) if (!items.some((it) => it.id === id)) ticked.delete(id);
   $('#sel-bar').hidden = showing !== 'waiting' || items.length === 0;
   paintTicked();
-  $('#waiting-list').replaceChildren(...items.map(rawRow));
-  $('#waiting-list').hidden = items.length === 0;
+  // By month and By box (sprint 16) draw pages and boxes instead of rows.
+  const pages = items.length ? groupedView() : null;
+  $('#waiting-pages').hidden = !pages;
+  if (pages) { $('#waiting-list').replaceChildren(); paintGrouped(items, pages); } else { $('#waiting-pages').replaceChildren(); $('#waiting-list').replaceChildren(...items.map(rawRow)); }
+  $('#waiting-list').hidden = items.length === 0 || !!pages;
   $('#waiting-list-empty').hidden = items.length > 0;
   $('#waiting-list-empty').textContent = all.length && !items.length ? 'Nothing matches. Change or clear the choices above.' : showing === 'waiting'
     ? 'Nothing is waiting. Pictures and recordings you bring in wait here until they go into a memory.'
@@ -451,7 +459,7 @@ function paintWaiting() {
   $('#missing-note').textContent = missing.length
     ? `${plural(missing.length, 'file is', 'files are')} missing from the Journey folder. If you moved ${missing.length === 1 ? 'it' : 'them'}, put ${missing.length === 1 ? 'it' : 'them'} back anywhere inside the Journey folder and the app will find ${missing.length === 1 ? 'it' : 'them'}.`
     : '';
-  for (const it of items) loadThumb(it);
+  if (!pages) for (const it of items) loadThumb(it);
 }
 
 // Sort and filter the Waiting list (after sprint 8, like Stories & Memories). The
@@ -496,7 +504,7 @@ $('#sel-all').addEventListener('change', () => {
   const all = $('#sel-all').checked;
   ticked.clear();
   if (all) for (const it of shownItems) ticked.add(it.id);
-  for (const c of $$('#waiting-list input[type=checkbox]')) c.checked = all;
+  for (const c of $$('#waiting-list input[type=checkbox], #waiting-pages input[type=checkbox]')) c.checked = all;
   paintTicked();
 });
 $('#sel-memory').addEventListener('click', async () => {
