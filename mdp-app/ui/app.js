@@ -833,9 +833,10 @@ async function addMedia() {
   const picked = await dialog.open({ multiple: true, pickerMode: 'media' });
   if (picked && picked.length) startImport(Array.isArray(picked) ? picked : [picked]);
 }
+// A folder opens the preview (Bring in a folder), as if chosen there.
 async function addFolder() {
-  const dir = await dialog.open({ directory: true, title: 'Choose a folder to add (its subfolders are included)' });
-  if (dir) startImport([dir]);
+  const dir = await dialog.open({ directory: true, title: 'Choose a folder (it can hold Google Takeout zips), or a history this app exported' });
+  if (dir) await bulkFrom(dir);
 }
 // One Add button with a small menu: Windows can't pick files and folders in the same dialog.
 function closeAddMenu(focusButton) {
@@ -977,8 +978,28 @@ $('#job-dismiss').addEventListener('click', () => { $('#job-done').hidden = true
 T.webview?.getCurrentWebview?.().onDragDropEvent((ev) => {
   const p = ev.payload;
   document.body.classList.toggle('dropping', p.type === 'enter' || p.type === 'over');
-  if (p.type === 'drop' && p.paths?.length && !$('#app').hidden) startImport(p.paths);
+  if (p.type === 'drop' && p.paths?.length && !$('#app').hidden) dropped(p.paths).catch(showError);
 });
+
+// Dropped files go straight into Waiting. One dropped folder opens the
+// preview, as if chosen in Bring in a folder. With several folders
+// they all go straight in as before, except histories this app exported,
+// which only the preview can bring back with their people and stories.
+async function dropped(paths) {
+  const dirs = PHONE ? [] : await invoke('folders_among', { paths }).catch(() => []);
+  if (dirs.length === 1) {
+    const files = paths.filter((p) => p !== dirs[0]);
+    if (files.length) await startImport(files);
+    await bulkFrom(dirs[0]);
+    if (files.length) toast(`${plural(files.length, 'dropped file goes', 'dropped files go')} straight into Waiting; the folder is shown here first.`);
+    return;
+  }
+  const exports = [];
+  for (const d of dirs) if ((await invoke('folder_kind', { folder: d }).catch(() => 'folder')) === 'export') exports.push(d);
+  const rest = paths.filter((p) => !exports.includes(p));
+  if (rest.length) await startImport(rest);
+  if (exports.length) toast(`${plural(exports.length, 'folder is a history', 'folders are histories')} this app exported, so ${exports.length === 1 ? 'it was' : 'they were'} left out. Drop ${exports.length === 1 ? 'it' : 'each one'} on its own to bring it back with its people and stories.`);
+}
 
 // ---------- One item (from search and lists) ----------
 

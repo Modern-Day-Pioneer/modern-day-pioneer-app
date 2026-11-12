@@ -979,6 +979,7 @@ pub fn run() {
             bulk::scan_status,
             bulk::cancel_scan,
             bulk::folder_kind,
+            bulk::folders_among,
             bulk::open_plan,
             bulk::check_plan_names,
             bulk::save_plan,

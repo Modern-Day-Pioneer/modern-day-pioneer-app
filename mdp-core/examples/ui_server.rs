@@ -295,6 +295,7 @@ fn call(j: &mut Journey, cmd: &str, a: &Value) -> Result<Value, String> {
         }
         // Sprint 11: bulk folder import, import plans and exported histories,
         // run at once (the app runs them on their own thread).
+        "folders_among" => json!(list(a, "paths").into_iter().filter(|p| std::path::Path::new(p).is_dir()).collect::<Vec<_>>()),
         "folder_kind" => json!(if mdp_core::bulk::is_export(std::path::Path::new(&s(a, "folder"))) { "export" } else { "folder" }),
         "start_scan" => {
             let opts: mdp_core::bulk::ScanOptions = serde_json::from_value(a["options"].clone()).unwrap_or_default();
@@ -355,6 +356,13 @@ fn call(j: &mut Journey, cmd: &str, a: &Value) -> Result<Value, String> {
             let read_me = path.with_file_name("import-plan read-me.txt");
             std::fs::write(&read_me, readme).map_err(|x| x.to_string())?;
             json!(read_me.display().to_string())
+        }
+        "start_import" => {
+            let paths: Vec<PathBuf> = list(a, "paths").into_iter().map(PathBuf::from).collect();
+            let (r, _) = j.import(&paths, &mdp_core::jobs::JobContext::new()).map_err(e)?;
+            *IMPORTED.lock().unwrap() = Some(json!({"running": false, "done": 1, "total": 1, "message": "", "error": null, "summary": {
+                "imported": r.imported.len(), "duplicates": r.duplicates.len(), "copies": 0, "skipped": [], "canceled": false, "note": null, "memories": 0, "matched": 0, "added": 0, "notes": []}}));
+            Value::Null
         }
         "start_plan_import" => {
             let plan: mdp_core::bulk::Plan = serde_json::from_value(a["plan"].clone()).map_err(|x| x.to_string())?;

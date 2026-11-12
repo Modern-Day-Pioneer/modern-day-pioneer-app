@@ -12,3 +12,5 @@ window.__TAURI__ = {
 };
 // Read-only, as Tauri's own dialog plugin defines it.
 Object.defineProperty(window.__TAURI__, 'dialog', { value: { ask: async (msg) => { window.lastDialog = msg; return true; }, open: async () => window.nextOpen ?? null, save: async () => window.nextSave ?? null } });
+// Drag and drop: the check calls window.drop([...paths]).
+window.__TAURI__.webview = { getCurrentWebview: () => ({ onDragDropEvent: (f) => { window.drop = (paths) => f({ payload: { type: 'drop', paths } }); } }) };

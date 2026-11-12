@@ -20,7 +20,13 @@ function bulkShow(which) {
 
 async function bulkPick() {
   const dir = await dialog.open({ directory: true, title: 'Choose a folder (it can hold Google Takeout zips), or a history this app exported' });
-  if (!dir) return;
+  if (dir) await bulkFrom(dir);
+}
+
+// Look through one folder for the preview. Add > Choose a folder and a
+// dropped folder come here too, as if picked on this screen.
+async function bulkFrom(dir) {
+  if (current !== 'bulk') go('bulk');
   bulk.folder = dir;
   bulk.zips = null;
   try {

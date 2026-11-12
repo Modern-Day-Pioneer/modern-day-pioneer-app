@@ -45,6 +45,13 @@ pub(crate) fn folder_kind(folder: String) -> String {
     if bulk::is_export(std::path::Path::new(&folder)) { "export" } else { "folder" }.into()
 }
 
+/// The folders among dropped paths: a dropped folder opens the
+/// preview, like Bring in a folder, while dropped files go straight in.
+#[tauri::command]
+pub(crate) fn folders_among(paths: Vec<String>) -> Vec<String> {
+    paths.into_iter().filter(|p| std::path::Path::new(p).is_dir()).collect()
+}
+
 /// Start looking through a folder, or through chosen zip files (`zips`), for
 /// the preview. Only the names of people and places are read from the
 /// Journey; the rest runs without holding it.
