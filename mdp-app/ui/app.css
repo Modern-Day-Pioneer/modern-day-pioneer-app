@@ -375,6 +375,8 @@ ol.tlines .btn { white-space: nowrap; font-variant-numeric: tabular-nums; }
 /* "Could add" on a memory */
 .could { margin: 0; padding: 8px 12px; border-radius: 8px; background: var(--navy-soft); }
 .selall { align-self: flex-start; padding: 0 12px; }
+.pager { margin: 12px 0; }
+.pager .field { margin-left: auto; flex-direction: row; align-items: center; gap: 6px; }
 dialog.viewer .viewer-actions { padding: 8px 16px; border-top: 1px solid var(--line); }
 
 /* Thumbnail sizes, chosen per screen (sprint 8). Medium is the size above. */

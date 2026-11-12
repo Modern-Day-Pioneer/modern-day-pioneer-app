@@ -228,6 +228,12 @@
         </div>
       </div>
       <label class="switch selall" for="sel-all"><input type="checkbox" id="sel-all"> Select all</label>
+      <nav class="row pager" id="waiting-pager" aria-label="Pages of waiting items" hidden>
+        <button class="btn" type="button" id="wp-prev">← Previous</button>
+        <span id="wp-at" aria-live="polite"></span>
+        <button class="btn" type="button" id="wp-next">Next →</button>
+        <div class="field"><label for="wp-size">Per page</label><select id="wp-size"></select></div>
+      </nav>
       <div class="waitbox"><ul class="raw" id="waiting-list" aria-labelledby="h-waiting"></ul></div>
       <div id="waiting-pages" hidden></div>
       <p class="empty" id="waiting-list-empty">Nothing is waiting. Pictures and recordings you bring in wait here until they go into a memory.</p>

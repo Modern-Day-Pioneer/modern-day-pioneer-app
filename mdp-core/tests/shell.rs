@@ -37,3 +37,21 @@ fn an_empty_journey_has_an_empty_home() {
     assert!(h.to_finish.is_empty() && h.featured.is_empty());
     assert!(j.people_by_family().unwrap().is_empty());
 }
+
+#[test]
+fn the_waiting_list_holds_every_waiting_item() {
+    // Jared, 2026-11-12: after a big import the Waiting tab said 2000 while the
+    // home page said 5790. The Waiting screen now gets every item and pages them.
+    let dir = tempfile::tempdir().unwrap();
+    let j = Journey::create(&dir.path().join("J"), "Mine").unwrap();
+    let n = 2345;
+    j.conn()
+        .execute_batch(&format!(
+            "WITH RECURSIVE k(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM k WHERE i < {n})
+             INSERT INTO item (id, table_name) SELECT 'w' || i, 'content' FROM k;
+             INSERT INTO content (id, kind, name, updated) SELECT id, 'picture', 'IMG_' || id || '.jpg', '2026-11-12' FROM item WHERE table_name = 'content';"
+        ))
+        .unwrap();
+    assert_eq!(j.home().unwrap().counts.waiting, n as i64);
+    assert_eq!(j.raw_content("waiting").unwrap().len(), n);
+}

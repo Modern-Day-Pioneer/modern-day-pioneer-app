@@ -203,9 +203,10 @@ impl Journey {
     }
 
     /// Raw content in one state ("waiting" or "set aside") for the Waiting screen, newest first.
+    /// Every item comes back: the screen pages them itself, so its counts match the home page.
     pub fn raw_content(&self, state: &str) -> Result<Vec<RawItem>> {
         let mut st = self.conn().prepare(&format!(
-            "SELECT id, name, kind, date, coalesce(source_note, ''), date_added FROM content WHERE state = ?1 AND {} ORDER BY date_added DESC, date DESC, name LIMIT 2000",
+            "SELECT id, name, kind, date, coalesce(source_note, ''), date_added FROM content WHERE state = ?1 AND {} ORDER BY date_added DESC, date DESC, name",
             crate::voice::NOT_ATTACHED
         ))?;
         let rows = st.query_map([state], |r| {

@@ -1,0 +1,91 @@
+// Screen check for the Waiting pages (2026-11-12): with more than 2,000 waiting
+// items the tab count matches the home page, List shows one page at a time
+// (10, 100 or 1000 per page, remembered), Select all still covers every item
+// and the pickers show at most 1000. Usage as check8.mjs: node check20.mjs <folder for screenshots>
+import { chromium } from 'playwright';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import { spawn } from 'child_process';
+const repo = new URL('../../..', import.meta.url).pathname.replace(/\/$/, '');
+const server = spawn(`${repo}/app/mdp-core/target/debug/examples/ui_server`, ['8787'], { stdio: ['ignore', 'inherit', 'inherit'] });
+await new Promise((r) => setTimeout(r, 2500));
+const out = process.argv[2] || '.';
+const browser = await chromium.launch(process.env.CHROME ? { executablePath: process.env.CHROME } : {});
+const errors = [];
+const stub = fs.readFileSync(`${repo}/app/mdp-app/ui-check/tauri-stub.js`, 'utf8');
+const results = {};
+const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } });
+page.setDefaultTimeout(30000);
+const fail = async (e) => { console.log('FAILED', String(e).slice(0, 800)); console.log(JSON.stringify({ results, errors }, null, 2)); await page.screenshot({ path: `${out}/fail.png` }).catch(() => {}); server.kill(); process.exit(1); };
+process.on('unhandledRejection', fail);
+process.on('uncaughtException', fail);
+page.on('pageerror', (e) => errors.push(String(e)));
+page.on('console', (m) => { if (m.type() === 'error' && !m.location().url.endsWith('/favicon.ico')) errors.push(m.text()); });
+await page.addInitScript(stub);
+await page.goto('http://127.0.0.1:8787/');
+await page.waitForSelector('#journey-title:not(:empty)');
+const check = (name, ok) => { results[name] = ok; if (!ok) throw new Error(`check failed: ${name}`); };
+const call = (cmd, args) => page.evaluate(([c, a]) => window.__TAURI__.core.invoke(c, a), [cmd, args]);
+const show = async (pane) => { await page.evaluate((p) => go(p), pane); await page.waitForTimeout(600); };
+
+const N = 2345;
+const src = fs.mkdtempSync(path.join(os.tmpdir(), 'mdp-check20-'));
+const jpg = fs.readFileSync(`${repo}/app/mdp-core/sample-media/cup-of-coffee.jpg`);
+const paths = [];
+for (let i = 0; i < N; i++) {
+  const p = path.join(src, `IMG_${String(i).padStart(5, '0')}.jpg`);
+  fs.writeFileSync(p, Buffer.concat([jpg, Buffer.from(`mdp${i}`)]));
+  paths.push(p);
+}
+const imported = await call('test_import', { paths });
+results.imported = imported.length;
+await page.evaluate(() => localStorage.removeItem('mdp.waitpage'));
+await page.reload();
+await page.waitForSelector('#journey-title:not(:empty)');
+const home = Number((await page.textContent('#wcount')).replace(/\D/g, ''));
+await show('waiting');
+await page.selectOption('#view-waiting', 'list').catch(() => {});
+await page.waitForTimeout(400);
+const tab = Number((await page.textContent('#n-waiting')).replace(/\D/g, ''));
+check('tab count matches the home page', tab === home && tab >= N);
+check('pager shows', await page.isVisible('#waiting-pager'));
+const rows = () => page.$$eval('#waiting-list > li', (l) => l.length);
+check('100 rows by default', (await rows()) === 100);
+results.at = await page.textContent('#wp-at');
+check('pager words', /^1–100 of \d+ · page 1 of \d+$/.test(results.at));
+check('Previous off on page 1', await page.isDisabled('#wp-prev'));
+await page.locator('#waiting-tools').scrollIntoViewIfNeeded();
+await page.screenshot({ path: `${out}/pages-100.png` });
+await page.click('#wp-next');
+await page.waitForTimeout(300);
+check('page 2', (await page.textContent('#wp-at')).startsWith('101–200'));
+await page.selectOption('#wp-size', '10');
+await page.waitForTimeout(300);
+check('10 rows, still at item 101', (await rows()) === 10 && (await page.textContent('#wp-at')).startsWith('101–110'));
+await page.selectOption('#wp-size', '1000');
+await page.waitForTimeout(800);
+check('1000 rows', (await rows()) === 1000 && (await page.textContent('#wp-at')).startsWith('1–1000'));
+await page.reload();
+await page.waitForSelector('#journey-title:not(:empty)');
+await show('waiting');
+check('size remembered', (await rows()) === 1000);
+// Last page and a filter going back to page 1.
+await page.click('#wp-next'); await page.click('#wp-next');
+await page.waitForTimeout(300);
+check('last page', await page.isDisabled('#wp-next') && (await page.textContent('#wp-at')).startsWith('2001–'));
+await page.fill('#wf-text', 'IMG_0001');
+await page.waitForTimeout(400);
+check('a search starts at page 1', (await rows()) === 10 && !(await page.isVisible('#waiting-pager')) || (await page.textContent('#wp-at')).startsWith('1–'));
+await page.fill('#wf-text', '');
+await page.waitForTimeout(400);
+await page.check('#sel-all');
+await page.waitForTimeout(300);
+results.selected = await page.textContent('#sel-count');
+check('Select all covers every item', results.selected.startsWith(`${tab} items`));
+await page.uncheck('#sel-all');
+await page.screenshot({ path: `${out}/pages-1000.png` });
+check('no page errors', errors.length === 0);
+console.log(JSON.stringify({ results, errors }, null, 2));
+server.kill();
+await browser.close();

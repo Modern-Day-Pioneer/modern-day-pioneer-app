@@ -561,9 +561,12 @@ async function withPreviews(list) {
   return list.map((m) => ({ ...m, ...covers.get(m.id) }));
 }
 
+const PICK_WAITING_MAX = 1000;
 async function pickWaiting(title, hint, okLabel, use) {
-  const items = await invoke('raw_content', { kind: 'waiting' });
-  if (!items.length) { toast('Nothing is waiting. Bring pictures and recordings in on the Waiting screen first.'); return false; }
+  const all = await invoke('raw_content', { kind: 'waiting' });
+  if (!all.length) { toast('Nothing is waiting. Bring pictures and recordings in on the Waiting screen first.'); return false; }
+  // At most 1000 rows at once (2026-11-12), newest first; older ones are on the Waiting screen.
+  const items = all.slice(0, PICK_WAITING_MAX);
   const boxes = items.map((it) => {
     const c = el('input', { type: 'checkbox', id: nextId('w'), value: it.id });
     const thumb = el('span', { class: 'thumb', 'aria-hidden': 'true' }, (KIND_NAME[it.kind] || '?')[0]);
@@ -571,7 +574,8 @@ async function pickWaiting(title, hint, okLabel, use) {
     return { c, li: el('li', {}, c, thumb, el('label', { for: c.id, class: 't' }, it.name, el('small', {}, `${KIND_NAME[it.kind] || it.kind} · ${it.date || 'date not known'}`))) };
   });
   const list = el('ul', { class: 'raw pick' }, ...boxes.map((b) => b.li));
-  return modal(title, [el('p', { class: 'quiet' }, hint), list],
+  const more = all.length > items.length ? el('p', { class: 'quiet' }, `Showing the newest ${items.length} of ${all.length} waiting items. To reach older ones, use the Waiting screen, where you can search and sort.`) : null;
+  return modal(title, [el('p', { class: 'quiet' }, hint), more, list],
     { ok: okLabel, wide: true, check: async () => {
       const ids = boxes.filter((b) => b.c.checked).map((b) => b.c.value);
       if (!ids.length) return 'Select at least one.';

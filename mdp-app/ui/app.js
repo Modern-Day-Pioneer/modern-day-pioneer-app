@@ -484,7 +484,7 @@ function paintWaiting() {
   $('#n-groups').textContent = `(${groups.length})`;
   for (const t of $$('.tab')) t.setAttribute('aria-pressed', String(t.dataset.state === showing));
   const grouped = showing === 'groups';
-  for (const id of ['waiting-tools', 'sel-bar', 'waiting-list', 'waiting-list-empty', 'waiting-count', 'waiting-pages']) if (grouped) $(`#${id}`).hidden = true;
+  for (const id of ['waiting-tools', 'sel-bar', 'waiting-list', 'waiting-list-empty', 'waiting-count', 'waiting-pages', 'waiting-pager']) if (grouped) $(`#${id}`).hidden = true;
   $('.selall').hidden = grouped;
   $('#group-list').hidden = !grouped;
   if (grouped) { paintGroups(groups); return; }
@@ -501,7 +501,10 @@ function paintWaiting() {
   // By month and By box (sprint 16) draw pages and boxes instead of rows.
   const pages = items.length ? groupedView() : null;
   $('#waiting-pages').hidden = !pages;
-  if (pages) { $('#waiting-list').replaceChildren(); paintGrouped(items, pages); } else { $('#waiting-pages').replaceChildren(); $('#waiting-list').replaceChildren(...items.map(rawRow)); }
+  // List and Tiles draw one page at a time (2026-11-12); the grouped views page themselves.
+  const page = pages ? [] : pageOf(items);
+  if (pages) { $('#waiting-list').replaceChildren(); paintGrouped(items, pages); } else { $('#waiting-pages').replaceChildren(); $('#waiting-list').replaceChildren(...page.map((it, i) => rawRow(it, waitPage * pageSize() + i))); }
+  paintPager(pages ? 0 : items.length);
   $('#waiting-list').hidden = items.length === 0 || !!pages;
   $('#waiting-list-empty').hidden = items.length > 0;
   $('#waiting-list-empty').textContent = all.length && !items.length ? 'Nothing matches. Change or clear the choices above.' : showing === 'waiting'
@@ -511,8 +514,53 @@ function paintWaiting() {
   $('#missing-note').textContent = missing.length
     ? `${plural(missing.length, 'file is', 'files are')} missing from the Journey folder. If you moved ${missing.length === 1 ? 'it' : 'them'}, put ${missing.length === 1 ? 'it' : 'them'} back anywhere inside the Journey folder and the app will find ${missing.length === 1 ? 'it' : 'them'}.`
     : '';
-  if (!pages) for (const it of items) loadThumb(it);
+  if (!pages) for (const it of page) loadThumb(it);
 }
+
+// Pages of the Waiting list (Jared, 2026-11-12): a big import holds thousands
+// of items, so List and Tiles show one page at a time. The sizes are kept
+// here; the largest is the most drawn at once. The choice is remembered on
+// this device. Counts, search, sorting and Select all still cover every item.
+const WAITING_PAGE_SIZES = [10, 100, 1000];
+const WAITING_PAGE_DEFAULT = 100;
+let waitPage = 0;
+function pageSize() {
+  const n = Number(kept('mdp.waitpage', WAITING_PAGE_DEFAULT));
+  return WAITING_PAGE_SIZES.includes(n) ? n : WAITING_PAGE_DEFAULT;
+}
+function pageOf(items) {
+  const size = pageSize();
+  const last = Math.max(0, Math.ceil(items.length / size) - 1);
+  waitPage = Math.min(Math.max(0, waitPage), last);
+  return items.slice(waitPage * size, (waitPage + 1) * size);
+}
+function paintPager(total) {
+  const size = pageSize();
+  const count = Math.ceil(total / size);
+  $('#waiting-pager').hidden = total <= WAITING_PAGE_SIZES[0];
+  if ($('#waiting-pager').hidden) return;
+  const sel = $('#wp-size');
+  if (!sel.options.length) sel.replaceChildren(...WAITING_PAGE_SIZES.map((n) => el('option', { value: String(n) }, String(n))));
+  sel.value = String(size);
+  const from = waitPage * size + 1;
+  $('#wp-at').textContent = `${from}–${Math.min(total, from + size - 1)} of ${total} · page ${waitPage + 1} of ${count}`;
+  $('#wp-prev').disabled = waitPage === 0;
+  $('#wp-next').disabled = waitPage >= count - 1;
+}
+function goToPage(n) {
+  waitPage = n;
+  paintWaiting();
+  $('#waiting-tools').scrollIntoView({ block: 'start' });
+}
+$('#wp-prev').addEventListener('click', () => goToPage(waitPage - 1));
+$('#wp-next').addEventListener('click', () => goToPage(waitPage + 1));
+$('#wp-size').addEventListener('change', () => {
+  // Keep the first item on screen in view at the new size.
+  const first = waitPage * pageSize();
+  keep('mdp.waitpage', $('#wp-size').value);
+  goToPage(Math.floor(first / pageSize()));
+  $('#wp-size').focus();
+});
 
 // Sort and filter the Waiting list (after sprint 8, like Stories & Memories). The
 // core sends items newest added first, so that order is kept for "new" and "old".
@@ -529,8 +577,9 @@ function sortWaiting(list) {
   else if (sort === 'date') rows.sort((a, b) => (a.date_sort ? 0 : 1) - (b.date_sort ? 0 : 1) || (a.date_sort || '').localeCompare(b.date_sort || '') || name(a, b));
   return rows;
 }
-for (const id of ['wf-sort', 'wf-kind', 'wf-nodate']) $(`#${id}`).addEventListener('change', paintWaiting);
-$('#wf-text').addEventListener('input', paintWaiting);
+const repaintFromStart = () => { waitPage = 0; paintWaiting(); };
+for (const id of ['wf-sort', 'wf-kind', 'wf-nodate']) $(`#${id}`).addEventListener('change', repaintFromStart);
+$('#wf-text').addEventListener('input', repaintFromStart);
 $('#waiting-tools').addEventListener('submit', (e) => e.preventDefault());
 
 // Items selected on the Waiting screen, to put into a memory together (sprint 4).
@@ -578,7 +627,7 @@ $('#sel-person').addEventListener('click', async () => {
 const GROUPS_AT_ONCE = 3;
 let groupsShown = GROUPS_AT_ONCE;
 const skippedGroups = new Set();
-journeyResets.push(() => { ticked.clear(); skippedGroups.clear(); shownItems = []; });
+journeyResets.push(() => { ticked.clear(); skippedGroups.clear(); shownItems = []; waitPage = 0; });
 
 function paintGroups(groups) {
   const byId = new Map(waitingLists.list.map((it) => [it.id, it]));
@@ -770,7 +819,7 @@ async function removeCopy(it) {
   } catch (e) { showError(e); return false; }
 }
 
-for (const t of $$('.tab')) t.addEventListener('click', () => { showing = t.dataset.state; loadWaiting().catch(showError); });
+for (const t of $$('.tab')) t.addEventListener('click', () => { showing = t.dataset.state; waitPage = 0; loadWaiting().catch(showError); });
 
 const PICK = [{ name: 'Photos, recordings, videos and text',
   extensions: ['jpg', 'jpeg', 'png', 'gif', 'heic', 'heif', 'avif', 'bmp', 'dng', 'tif', 'tiff', 'webp', 'wav', 'flac', 'mp3', 'm4a', 'opus', 'ogg', 'oga', 'mp4', 'm4v', 'mov', 'txt', 'pdf', 'doc', 'docx', 'odt', 'rtf'] }];
