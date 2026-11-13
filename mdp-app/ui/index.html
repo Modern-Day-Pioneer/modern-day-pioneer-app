@@ -193,6 +193,12 @@
         <p id="job-msg"></p>
         <progress id="job-bar" max="1" value="0" aria-label="Progress"></progress>
         <button class="btn" type="button" id="job-cancel">Cancel</button>
+        <details class="job-details" id="job-details"><summary>Show details</summary>
+          <p class="quiet">Latest files</p>
+          <ol class="job-files" id="job-files" aria-label="Latest files"></ol>
+          <p class="quiet" id="job-errors-h" hidden>Errors</p>
+          <ul class="job-errors" id="job-errors" aria-label="Errors"></ul>
+        </details>
       </div>
       <div class="job done" id="job-done" hidden>
         <p id="job-done-msg" role="status"></p>
@@ -254,6 +260,12 @@
         <p id="bulk-job-msg">Looking through the folder…</p>
         <progress id="bulk-bar" max="1" value="0" aria-label="Progress"></progress>
         <button class="btn" type="button" id="bulk-cancel">Cancel</button>
+        <details class="job-details" id="bulk-job-details"><summary>Show details</summary>
+          <p class="quiet">Latest files</p>
+          <ol class="job-files" id="bulk-job-files" aria-label="Latest files"></ol>
+          <p class="quiet" id="bulk-job-errors-h" hidden>Errors</p>
+          <ul class="job-errors" id="bulk-job-errors" aria-label="Errors"></ul>
+        </details>
       </div>
       <div id="bulk-plan" hidden>
         <p id="bulk-from"></p>

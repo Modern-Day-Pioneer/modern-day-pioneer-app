@@ -196,6 +196,8 @@ button.person:hover { border-color: var(--navy); }
 .job button { justify-self: start; }
 .job.done { background: var(--surface); }
 .job ul { margin: 6px 0 0; padding-left: 18px; color: var(--muted); }
+.job-details summary { cursor: pointer; color: var(--muted); }
+.job-details ol.job-files { max-height: 12em; overflow-y: auto; margin: 4px 0 0; padding-left: 0; list-style: none; font-size: 0.9em; overflow-wrap: anywhere; }
 .tabs { display: flex; gap: 6px; }
 .tab { padding: 5px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
 .tab[aria-pressed="true"] { background: var(--navy); border-color: var(--navy); color: var(--navy-ink); }

@@ -624,7 +624,7 @@ fn run_import(app: &AppHandle, root: &Path, step: Step, ctx: &JobContext) -> Res
         return Ok(sum);
     }
     let before = ctx.skipped().len();
-    ctx.message(format!("Making copies of {} files in formats every computer can open…", tasks.len()));
+    ctx.message("Making copies in formats every computer can open…");
     match mdp_core::convert::prepare(root, &tasks, &tool, ctx) {
         Ok(b) => {
             let mut b = Some(b);
@@ -650,6 +650,9 @@ struct ImportStatus {
     message: String,
     summary: Option<ImportSummary>,
     error: Option<String>,
+    /// While running: the latest file names and the files skipped so far.
+    recent: Vec<String>,
+    skipped: Vec<SkippedView>,
 }
 
 #[tauri::command(async)]
@@ -665,6 +668,8 @@ fn import_status(state: State<'_, Shared>) -> Res<Option<ImportStatus>> {
         message: p.message,
         summary: result.as_ref().and_then(|r| r.as_ref().ok().cloned()),
         error: result.and_then(|r| r.err()),
+        recent: job.ctx.recent(),
+        skipped: job.ctx.skipped().into_iter().map(|k| SkippedView { item: k.item, reason: k.reason }).collect(),
     }))
 }
 

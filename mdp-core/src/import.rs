@@ -217,11 +217,11 @@ pub fn prepare(journey_root: &Path, paths: &[PathBuf], ctx: &JobContext) -> Resu
         OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
     )?;
     let mut seen = HashSet::new();
+    ctx.message("Copying the files…");
     ctx.set_total(files.len() as u64 + ctx.progress().done);
-    for (n, src) in files.iter().enumerate() {
+    for src in &files {
         ctx.check()?;
         let shown = src.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
-        let label = format!("Copying {shown} ({} of {})", n + 1, files.len());
         match prepare_one(&batch.dir, src, &catalog) {
             Ok(p) => {
                 if let Some(existing) = existing_content(&catalog, &p.sha256)? {
@@ -233,7 +233,7 @@ pub fn prepare(journey_root: &Path, paths: &[PathBuf], ctx: &JobContext) -> Resu
                 } else {
                     batch.items.push(p);
                 }
-                ctx.advance(label);
+                ctx.advance_item(shown);
             }
             Err(Error::Canceled) => return Err(Error::Canceled),
             Err(e) => ctx.skip(src.display().to_string(), plain_reason(&e)),

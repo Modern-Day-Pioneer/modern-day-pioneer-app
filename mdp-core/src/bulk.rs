@@ -578,6 +578,7 @@ fn scan_paths(known: &Known, journey_root: &Path, folder: &Path, paths: &[PathBu
         }
     }
     let mut rows = Vec::new();
+    ctx.message("Analyzing content…");
     ctx.set_total(files.len() as u64);
     for p in &files {
         ctx.check()?;
@@ -669,7 +670,7 @@ fn scan_paths(known: &Known, journey_root: &Path, folder: &Path, paths: &[PathBu
             place_note: String::new(),
             sidecar: sidecars.get(p).map(|j| j.display().to_string()).unwrap_or_default(),
         });
-        ctx.advance(format!("Looking at {file_name}"));
+        ctx.advance_item(file_name);
     }
     suggest_groups(&mut rows);
     let mut plan = Plan { base: folder.display().to_string(), rows, names: vec![], places: vec![] };

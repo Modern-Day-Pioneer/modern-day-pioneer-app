@@ -67,9 +67,7 @@ function watchScan() {
     if (!s) { clearInterval(scanPolling); $('#bulk-job').hidden = true; return; }
     $('#bulk-job').hidden = !s.running;
     if (s.running) {
-      $('#bulk-job-msg').textContent = s.message || 'Looking through the folder…';
-      $('#bulk-bar').max = Math.max(1, s.total);
-      $('#bulk-bar').value = Math.min(s.done, s.total);
+      showJobProgress('bulk-job', s, 'Looking through the folder…');
       return;
     }
     clearInterval(scanPolling);

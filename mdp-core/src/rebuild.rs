@@ -300,20 +300,20 @@ pub fn prepare(journey_root: &Path, dir: &Path, leave_out: &HashSet<String>, ctx
         .collect();
     let needed: u64 = todo.iter().filter(|(_, _, u)| crate::folder::is_inside(u)).filter_map(|(_, _, u)| std::fs::metadata(dir.join(u)).ok()).map(|m| m.len()).sum();
     crate::bulk::check_space(journey_root, needed)?;
-    ctx.set_total(todo.len() as u64);
+    ctx.start_step("Copying the files…", todo.len() as u64);
     let mut files = HashMap::new();
-    for (n, (id, node, url)) in todo.iter().enumerate() {
+    for (id, node, url) in &todo {
         ctx.check()?;
-        let label = format!("Copying {} ({} of {})", url.rsplit('/').next().unwrap_or(url), n + 1, todo.len());
+        let label = url.rsplit('/').next().unwrap_or(url).to_string();
         if present(&conn, id, "content")?.is_some() {
-            ctx.advance(label);
+            ctx.advance_item(label.clone());
             continue;
         }
         // The export's catalog could be changed by anyone it was shared
         // with, so a file is only taken from inside the export folder.
         if !crate::folder::is_inside(url) {
             ctx.skip(url.clone(), "The export lists this file outside its own folder, so it was not brought in.");
-            ctx.advance(label);
+            ctx.advance_item(label.clone());
             continue;
         }
         let src: PathBuf = url.split('/').fold(dir.to_path_buf(), |p, part| p.join(part));
@@ -334,7 +334,7 @@ pub fn prepare(journey_root: &Path, dir: &Path, leave_out: &HashSet<String>, ctx
             Err(Error::Canceled) => return Err(Error::Canceled),
             Err(e) => ctx.skip(url.clone(), crate::import::plain_reason(&e)),
         }
-        ctx.advance(label);
+        ctx.advance_item(label.clone());
     }
     Ok(ExportBatch { batch, catalog, files, leave_out: leave_out.clone() })
 }

@@ -926,6 +926,38 @@ async function startImport(paths) {
   } catch (e) { showError(e); }
 }
 
+// Import progress: the main line shows only the step and a count, never a
+// file name (some names read badly out of context). The names and any errors
+// are under Show details, which stays open or closed as the person left it.
+const JOB_DETAILS_KEY = 'mdp.jobDetails';
+function showJobProgress(prefix, s, fallback) {
+  const step = s.message || fallback;
+  $(`#${prefix}-msg`).textContent = s.total ? `${step.replace(/…$/, '')}: ${Math.min(s.done, s.total)} of ${plural(s.total, 'file', 'files')}` : step;
+  const bar = $(prefix === 'job' ? '#job-bar' : '#bulk-bar');
+  bar.max = Math.max(1, s.total);
+  bar.value = Math.min(s.done, s.total);
+  const box = $(`#${prefix}-details`);
+  if (!box.open) return;
+  const list = $(`#${prefix}-files`);
+  const recent = s.recent || [];
+  if (list.dataset.last !== `${s.done}:${recent.length}`) {
+    list.dataset.last = `${s.done}:${recent.length}`;
+    list.replaceChildren(...recent.map((name) => el('li', {}, name)));
+    list.scrollTop = list.scrollHeight;
+  }
+  const skipped = s.skipped || [];
+  $(`#${prefix}-errors-h`).hidden = skipped.length === 0;
+  $(`#${prefix}-errors`).replaceChildren(...skipped.map((k) => el('li', {}, el('b', {}, k.item), ` ${k.reason}`)));
+}
+for (const prefix of ['job', 'bulk-job']) {
+  const box = $(`#${prefix}-details`);
+  try { box.open = localStorage.getItem(JOB_DETAILS_KEY) === 'open'; } catch { /* private window */ }
+  box.addEventListener('toggle', () => {
+    $(`#${prefix}-files`).dataset.last = '';
+    try { localStorage.setItem(JOB_DETAILS_KEY, box.open ? 'open' : 'closed'); } catch { /* not kept */ }
+  });
+}
+
 function watchImport() {
   clearInterval(polling);
   const tick = async () => {
@@ -933,9 +965,7 @@ function watchImport() {
     if (!s) { clearInterval(polling); return; }
     $('#job').hidden = !s.running;
     if (s.running) {
-      $('#job-msg').textContent = s.message || 'Starting…';
-      $('#job-bar').max = Math.max(1, s.total);
-      $('#job-bar').value = Math.min(s.done, s.total);
+      showJobProgress('job', s, 'Starting…');
       return;
     }
     clearInterval(polling);

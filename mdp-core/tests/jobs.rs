@@ -95,3 +95,21 @@ fn a_failing_job_reports_its_error() {
         other => panic!("{other:?}"),
     }
 }
+
+#[test]
+fn item_names_stay_out_of_the_message_and_only_the_latest_are_kept() {
+    let ctx = mdp_core::jobs::JobContext::new();
+    ctx.message("Analyzing content…");
+    ctx.set_total(250);
+    for i in 0..250 {
+        ctx.advance_item(format!("file {i}.jpg"));
+    }
+    let p = ctx.progress();
+    assert_eq!((p.done, p.total, p.message.as_str()), (250, 250, "Analyzing content…"));
+    let recent = ctx.recent();
+    assert_eq!(recent.len(), mdp_core::jobs::RECENT_ITEMS);
+    assert_eq!(recent.first().map(String::as_str), Some("file 50.jpg"));
+    assert_eq!(recent.last().map(String::as_str), Some("file 249.jpg"));
+    ctx.start_step("Making copies…", 3);
+    assert_eq!((ctx.progress().done, ctx.progress().total), (0, 3));
+}

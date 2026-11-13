@@ -26,10 +26,15 @@ pub struct Skipped {
     pub reason: String,
 }
 
+/// How many recent item names a job keeps for its details list.
+pub const RECENT_ITEMS: usize = 200;
+
 #[derive(Default)]
 struct Shared {
     progress: Progress,
     skipped: Vec<Skipped>,
+    /// The latest item names, oldest first, at most [`RECENT_ITEMS`].
+    recent: std::collections::VecDeque<String>,
 }
 
 /// Given to the job's code: report progress, skip items, and check for cancel.
@@ -73,6 +78,29 @@ impl JobContext {
 
     pub fn message(&self, message: impl Into<String>) {
         self.shared.lock().unwrap().progress.message = message.into();
+    }
+
+    /// One item finished: counts it and adds its name to the recent list,
+    /// leaving the message (the step's name) as it is. The name is only
+    /// shown when the person opens the details, never in the main line.
+    pub fn advance_item(&self, name: impl Into<String>) {
+        let mut s = self.shared.lock().unwrap();
+        s.progress.done += 1;
+        if s.recent.len() == RECENT_ITEMS {
+            s.recent.pop_front();
+        }
+        s.recent.push_back(name.into());
+    }
+
+    /// A new step with its own count: starts the count again from zero.
+    pub fn start_step(&self, message: impl Into<String>, total: u64) {
+        let mut s = self.shared.lock().unwrap();
+        s.progress = Progress { done: 0, total, message: message.into() };
+    }
+
+    /// The latest item names, oldest first.
+    pub fn recent(&self) -> Vec<String> {
+        self.shared.lock().unwrap().recent.iter().cloned().collect()
     }
 
     /// Record one item that failed and carry on with the rest.

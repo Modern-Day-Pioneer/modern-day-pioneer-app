@@ -37,6 +37,8 @@ pub(crate) struct ScanStatus {
     plan: Option<Plan>,
     error: Option<String>,
     skipped: Vec<SkippedView>,
+    /// The latest file names, for the progress box's details.
+    recent: Vec<String>,
 }
 
 /// "export" for a history the app exported, "folder" for any other folder.
@@ -92,6 +94,7 @@ pub(crate) fn scan_status(state: State<'_, Shared>) -> Res<Option<ScanStatus>> {
         total: p.total,
         message: p.message,
         skipped: job.ctx.skipped().into_iter().map(|k| SkippedView { item: k.item, reason: k.reason }).collect(),
+        recent: job.ctx.recent(),
         plan: result.as_ref().and_then(|r| r.as_ref().ok().cloned()),
         error: result.and_then(|r| r.err()),
     }))

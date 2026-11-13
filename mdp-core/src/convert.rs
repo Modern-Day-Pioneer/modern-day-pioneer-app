@@ -256,17 +256,18 @@ pub fn prepare(root: &Path, tasks: &[Task], tool: &Tool, ctx: &JobContext) -> Re
     let dir = root.join(CONTENT_DIR).join(HOLDING_DIR).join(crate::ids::new_id());
     std::fs::create_dir_all(&dir)?;
     let mut batch = Batch { dir, done: Vec::new() };
-    ctx.set_total(tasks.len() as u64);
-    for (n, t) in tasks.iter().enumerate() {
+    let step = ctx.progress().message;
+    let step = if step.is_empty() { "Making copies in formats every computer can open…".to_string() } else { step };
+    ctx.start_step(step, tasks.len() as u64);
+    for t in tasks {
         ctx.check()?;
         let src = folder::absolute(root, &t.path);
         let made: Result<Vec<crate::documents::Made>> = if crate::documents::is_document(&t.format) {
-            ctx.message(format!("Making readable copies of {}…", t.name));
             crate::documents::copies(&src, &t.format, &batch.dir, &t.content_id)
         } else {
             let info = if t.kind == "picture" || t.kind == "text" { MediaInfo::default() } else { probe(tool, &src) };
             let Some((ext, format)) = target(&t.format, info.video_codec.as_deref()) else {
-                ctx.advance(format!("{} needs no copy", t.name));
+                ctx.advance_item(format!("{} (no copy needed)", t.name));
                 continue;
             };
             let holding = batch.dir.join(format!("{}.{ext}", t.content_id));
@@ -281,7 +282,7 @@ pub fn prepare(root: &Path, tasks: &[Task], tool: &Tool, ctx: &JobContext) -> Re
         match files {
             Ok(files) => {
                 batch.done.push(Done { task: t.clone(), files });
-                ctx.advance(format!("Made a copy of {} ({} of {})", t.name, n + 1, tasks.len()));
+                ctx.advance_item(t.name.clone());
             }
             Err(e) => ctx.skip(t.name.clone(), e.to_string()),
         }
