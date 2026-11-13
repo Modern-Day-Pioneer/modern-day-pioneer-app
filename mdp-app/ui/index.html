@@ -273,6 +273,26 @@
           <label class="switch" for="bulk-story"><input type="checkbox" id="bulk-story">Put each folder's memories into a story named after the folder</label>
           <label class="switch" for="bulk-photo" id="bulk-photo-wrap"><input type="checkbox" id="bulk-photo">Use the photo's own date ahead of dates in names (looks through the folder again)</label>
         </div>
+        <div class="row" id="bulk-rules-wrap">
+          <label for="bulk-rules">Import rules</label>
+          <select id="bulk-rules">
+            <option value="">The folder's own rules file, if it has one</option>
+            <option value="built in">Family history folders (built in)</option>
+            <option value="none">No rules</option>
+            <option value="pick">Choose a rules file…</option>
+          </select>
+          <button class="btn" type="button" id="bulk-rules-copy">Save the built-in rules as a file…</button>
+        </div>
+        <details id="bulk-coverage" hidden><summary id="bulk-coverage-sum"></summary>
+          <p class="quiet" id="bulk-coverage-from"></p>
+          <table class="bulk-coverage-table"><thead><tr><th scope="col">Rule</th><th scope="col">Named the memory</th><th scope="col">Matched</th></tr></thead><tbody id="bulk-coverage-rules"></tbody></table>
+          <p id="bulk-coverage-uncaught-h"></p>
+          <ul id="bulk-coverage-uncaught"></ul>
+          <p id="bulk-coverage-names-h"></p>
+          <ul id="bulk-coverage-names"></ul>
+          <ul class="note" id="bulk-coverage-problems"></ul>
+          <button class="btn" type="button" id="bulk-coverage-save">Save the coverage report…</button>
+        </details>
         <div class="row" role="group" aria-label="Memories">
           <span class="quiet" id="bulk-count"></span>
           <button class="btn" type="button" id="bulk-groups">Use suggested groups</button>

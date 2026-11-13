@@ -194,6 +194,19 @@ pub(crate) fn save_plan(path: String, plan: Plan) -> Res<()> {
     std::fs::write(&p, bulk::to_csv(&plan, &p)).map_err(|e| format!("The import plan could not be saved ({e})."))
 }
 
+/// Save the import rules built into the app, to change and use as a folder's own.
+#[tauri::command]
+pub(crate) fn save_built_in_rules(path: String) -> Res<()> {
+    std::fs::write(&path, mdp_core::rules::BUILT_IN.replace('\n', "\r\n")).map_err(|e| format!("The rules could not be saved ({e})."))
+}
+
+/// Save what the import rules caught and missed, as plain text.
+#[tauri::command]
+pub(crate) fn save_coverage(path: String, plan: Plan) -> Res<()> {
+    let c = plan.coverage.ok_or("No import rules were used for this preview.")?;
+    std::fs::write(&path, c.text()).map_err(|e| format!("The coverage report could not be saved ({e})."))
+}
+
 /// Save a blank sample plan, with its read-me beside it.
 #[tauri::command]
 pub(crate) fn save_sample_plan(path: String) -> Res<String> {

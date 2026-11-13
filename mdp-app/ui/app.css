@@ -485,6 +485,11 @@ html:not(.phone) .phone-only { display: none !important; }
 .bulk-table { border-collapse: collapse; width: 100%; font-size: 13px; }
 .bulk-table th { text-align: left; font-weight: 600; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--line); background: var(--surface); position: sticky; top: 0; }
 .bulk-table td { padding: 4px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.bulk-coverage-table { border-collapse: collapse; font-size: 13px; margin: 6px 0; }
+.bulk-coverage-table th, .bulk-coverage-table td { text-align: left; padding: 3px 8px; border-bottom: 1px solid var(--line); }
+.bulk-coverage-table td + td { text-align: right; }
+#bulk-coverage ul { max-height: 240px; overflow: auto; font-size: 13px; }
+#bulk-coverage { margin: 6px 0 14px; }
 .bulk-table input[type=text] { width: 100%; min-width: 110px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: inherit; font: inherit; }
 .bulk-table .file { max-width: 260px; overflow-wrap: anywhere; }
 .bulk-table .src { display: block; color: var(--muted); font-size: 11.5px; margin-top: 2px; }

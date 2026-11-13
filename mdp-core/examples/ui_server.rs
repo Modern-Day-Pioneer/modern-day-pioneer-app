@@ -349,6 +349,16 @@ fn call(j: &mut Journey, cmd: &str, a: &Value) -> Result<Value, String> {
             std::fs::write(&path, mdp_core::bulk::to_csv(&plan, &path)).map_err(|x| x.to_string())?;
             Value::Null
         }
+        "save_built_in_rules" => {
+            std::fs::write(s(a, "path"), mdp_core::rules::BUILT_IN.replace('\n', "\r\n")).map_err(|x| x.to_string())?;
+            Value::Null
+        }
+        "save_coverage" => {
+            let plan: mdp_core::bulk::Plan = serde_json::from_value(a["plan"].clone()).map_err(|x| x.to_string())?;
+            let c = plan.coverage.ok_or("No import rules were used for this preview.")?;
+            std::fs::write(s(a, "path"), c.text()).map_err(|x| x.to_string())?;
+            Value::Null
+        }
         "save_sample_plan" => {
             let path = PathBuf::from(s(a, "path"));
             let (csv, readme) = mdp_core::bulk::sample_plan();

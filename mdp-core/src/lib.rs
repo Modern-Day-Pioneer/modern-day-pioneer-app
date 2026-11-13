@@ -21,6 +21,7 @@ pub mod memories;
 pub mod people;
 pub mod pictures;
 pub mod places;
+pub mod rules;
 pub mod preview;
 pub mod rebuild;
 pub mod sample;

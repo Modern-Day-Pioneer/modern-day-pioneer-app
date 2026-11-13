@@ -3,7 +3,7 @@
 // mdp_core::bulk and the rebuild by mdp_core::rebuild; this screen shows
 // them, lets the person fix them, and starts an ordinary import.
 
-const bulk = { plan: null, folder: null, shown: 200, fromCsv: false, look: null };
+const bulk = { plan: null, folder: null, shown: 200, fromCsv: false, look: null, rules: '' };
 const PAGE = 200;
 
 extraLoaders.bulk = async () => {
@@ -48,7 +48,7 @@ async function bulkPickZips() {
 
 async function startScan() {
   bulkShow(null);
-  await invoke('start_scan', { folder: bulk.folder || '', zips: bulk.zips || null, options: { photo_dates_first: $('#bulk-photo').checked, story_per_folder: $('#bulk-story').checked } });
+  await invoke('start_scan', { folder: bulk.folder || '', zips: bulk.zips || null, options: { photo_dates_first: $('#bulk-photo').checked, story_per_folder: $('#bulk-story').checked, rules: bulk.rules } });
   watchScan();
 }
 
@@ -90,10 +90,56 @@ function showPlan(plan, skipped = []) {
   $('#bulk-skipped').hidden = skipped.length === 0;
   $('#bulk-skipped-sum').textContent = `${plural(skipped.length, 'file was', 'files were')} left out`;
   $('#bulk-skipped-list').replaceChildren(...skipped.map((k) => el('li', {}, el('b', {}, k.item), ` ${k.reason}`)));
+  $('#bulk-rules-wrap').hidden = bulk.fromCsv;
+  // The rules name each story; the switch would put folder names over them.
+  $('label[for="bulk-story"]').hidden = !!plan.coverage;
+  showCoverage(plan.coverage);
   bulkShow('plan');
   drawRows();
   checkNames().catch(showError);
 }
+
+// ---------- Import rules: which rules filled the plan in, and what they missed ----------
+
+const SHOW_AT_MOST = 200;
+function showCoverage(c) {
+  $('#bulk-coverage').hidden = !c;
+  if (!c) return;
+  const caught = c.files - c.uncaught.length;
+  $('#bulk-coverage-sum').textContent = `Import rules “${c.name}”: ${plural(caught, 'file', 'files')} given a memory, ${plural(c.uncaught.length, 'file', 'files')} no rule caught`;
+  $('#bulk-coverage-from').textContent = c.source === 'built in' ? 'The rules built into the app.' : `From ${c.source}`;
+  $('#bulk-coverage-rules').replaceChildren(...c.rules.filter((r) => r[2] > 0).map(([label, named, all]) => el('tr', {}, el('td', {}, label), el('td', {}, String(named)), el('td', {}, String(all)))));
+  $('#bulk-coverage-uncaught-h').textContent = c.uncaught.length ? `Files no rule caught (${c.uncaught.length}):` : 'Every file was caught by a rule.';
+  $('#bulk-coverage-uncaught').replaceChildren(...c.uncaught.slice(0, SHOW_AT_MOST).map((f) => el('li', {}, f)));
+  $('#bulk-coverage-names-h').textContent = c.to_confirm.length ? `Names to confirm (${c.to_confirm.length}). Add the ones that are people to the rules file's Names list:` : '';
+  $('#bulk-coverage-names').replaceChildren(...c.to_confirm.slice(0, SHOW_AT_MOST).map(([n, k]) => el('li', {}, `${n} (${plural(k, 'file', 'files')})`)));
+  $('#bulk-coverage-problems').replaceChildren(...c.problems.map((p) => el('li', {}, `Left out of the rules file: ${p}`)));
+}
+
+$('#bulk-rules').addEventListener('change', async (e) => {
+  if (e.target.value === 'pick') {
+    const path = await dialog.open({ title: 'Choose an import rules file', filters: [{ name: 'Import rules', extensions: ['md', 'txt'] }] });
+    if (!path) { e.target.value = bulk.rules && !['built in', 'none'].includes(bulk.rules) ? 'file' : bulk.rules; return; }
+    bulk.rules = path;
+    let opt = $('#bulk-rules option[value="file"]');
+    if (!opt) { opt = el('option', { value: 'file' }); e.target.append(opt); }
+    opt.textContent = `Rules file: ${path}`;
+    e.target.value = 'file';
+  } else if (e.target.value !== 'file') {
+    bulk.rules = e.target.value;
+  }
+  if ((bulk.folder || bulk.zips) && !bulk.fromCsv) startScan().catch(showError);
+});
+$('#bulk-rules-copy').addEventListener('click', async () => {
+  const path = await dialog.save({ title: 'Save the built-in import rules', defaultPath: '_import-rules.md', filters: [{ name: 'Import rules', extensions: ['md'] }] });
+  if (!path) return;
+  try { await invoke('save_built_in_rules', { path }); toast('Saved. Change it in any text editor; saved as _import-rules.md at the top of a folder, it is used for that folder.'); } catch (e) { showError(e); }
+});
+$('#bulk-coverage-save').addEventListener('click', async () => {
+  const path = await dialog.save({ title: 'Save the coverage report', defaultPath: 'import-rules-coverage.txt', filters: [{ name: 'Text', extensions: ['txt'] }] });
+  if (!path) return;
+  try { await invoke('save_coverage', { path, plan: bulk.plan }); toast('The coverage report is saved.'); } catch (e) { showError(e); }
+});
 
 // ---------- Names found (sprint 12) ----------
 // Every name in People once, matched to someone in the Journey, added as a
@@ -375,7 +421,7 @@ function drawRows() {
     const tr = el('tr', { class: r.include ? null : 'off' },
       el('td', {}, tick),
       el('td', { class: 'pv-cell' }, look),
-      el('td', { class: 'file' }, r.file, r.kind ? el('span', { class: 'src' }, r.kind) : null, lines,
+      el('td', { class: 'file' }, r.file, r.kind ? el('span', { class: 'src' }, r.kind) : null, lines, ruledOf(r),
         r.people_note || r.place_note || r.note ? el('span', { class: 'note' }, [r.people_note, r.place_note, r.note].filter(Boolean).join(' ')) : null),
       el('td', {}, text('title', 'Title')),
       el('td', {}, text('date', 'Date'), src),
@@ -389,6 +435,14 @@ function drawRows() {
   $('#bulk-more').hidden = left <= 0;
   $('#bulk-more').textContent = `Show ${Math.min(left, PAGE)} more of ${left}`;
   count();
+}
+
+// What the import rules added that the table has no column for.
+function ruledOf(r) {
+  const bits = [r.family && `Family: ${r.family}`, r.series && `Number ${r.series}`, r.photo_by && `Pictures from ${r.photo_by}`].filter(Boolean);
+  const rules = (r.rule || '').split('; ').filter(Boolean).map((x) => x.split('.')[0]).filter((x) => /^\d/.test(x));
+  if (rules.length) bits.push(`Rules ${rules.join(', ')}`);
+  return bits.length ? el('span', { class: 'src', title: r.rule || '' }, bits.join(' · ')) : null;
 }
 
 function count() {

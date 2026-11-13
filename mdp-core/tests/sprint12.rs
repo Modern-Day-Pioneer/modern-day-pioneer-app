@@ -275,6 +275,7 @@ fn names_found_are_matched_once_for_every_file() {
         ],
         names: vec![],
         places: vec![],
+        coverage: None,
     };
     let known = bulk::Known::read(&j).unwrap();
     let found = bulk::check_names(&mut plan, &known);
@@ -335,6 +336,7 @@ fn places_found_group_nearby_locations() {
         ],
         names: vec![],
         places: vec![],
+        coverage: None,
     };
     let known = bulk::Known::read(&j).unwrap();
     let found = bulk::check_places(&mut plan, &known, true);

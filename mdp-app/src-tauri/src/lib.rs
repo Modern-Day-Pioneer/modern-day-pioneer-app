@@ -989,6 +989,8 @@ pub fn run() {
             bulk::check_plan_names,
             bulk::save_plan,
             bulk::save_sample_plan,
+            bulk::save_built_in_rules,
+            bulk::save_coverage,
             bulk::start_plan_import,
             bulk::look_at_export,
             bulk::start_export_import,

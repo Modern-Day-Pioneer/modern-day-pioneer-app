@@ -69,6 +69,17 @@ pub struct PlanRow {
     /// Google Takeout's sidecar for this file, found while looking through
     /// (it can be in another part of the Takeout). Not in import plans.
     pub sidecar: String,
+    /// A family the memory's people belong to (found or, with "Add
+    /// people…", made). People whose first name is in it become members.
+    pub family: String,
+    /// The file's number in a series (`14`, `27c`): sets the order of the
+    /// files inside a memory.
+    pub series: String,
+    /// Who took or gave the picture: credited in the memory's description,
+    /// never added to People.
+    pub photo_by: String,
+    /// The import rules that filled this row in, in order.
+    pub rule: String,
 }
 
 /// A folder's or CSV's rows, with the folder relative paths start from.
@@ -81,6 +92,8 @@ pub struct Plan {
     pub names: Vec<NameChoice>,
     /// What to do with the places Google's locations are at (Places found).
     pub places: Vec<PlaceChoice>,
+    /// The import rules used and what they caught (none: no rules).
+    pub coverage: Option<crate::rules::Coverage>,
 }
 
 /// What to do with one group of nearby locations, for every file in it.
@@ -257,9 +270,12 @@ pub fn check_names(plan: &mut Plan, known: &Known) -> Vec<FoundName> {
     found
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(default)]
 pub struct ScanOptions {
+    /// Import rules: blank for the folder's own `_import-rules.md` (none
+    /// when it has none), `none`, `built in`, or a rules file's path.
+    pub rules: String,
     /// Use a picture's own date ahead of dates in names (off: scans).
     pub photo_dates_first: bool,
     /// Put each folder's memories into a story named after the folder.
@@ -498,7 +514,8 @@ pub fn scan_with(known: &Known, journey_root: &Path, folder: &Path, opts: ScanOp
         return Err(Error::Invalid(format!("{} is not a folder.", folder.display())));
     }
     ctx.message("Looking through the folder…");
-    scan_paths(known, journey_root, folder, &[folder.to_path_buf()], opts, ctx)
+    let rules = crate::rules::RuleSet::choose(folder, &opts.rules)?;
+    scan_paths(known, journey_root, folder, &[folder.to_path_buf()], opts, rules.as_ref(), ctx)
 }
 
 /// A plan for zip files chosen one by one (such as the parts of a Google
@@ -512,10 +529,11 @@ pub fn scan_zips(known: &Known, journey_root: &Path, zips: &[PathBuf], opts: Sca
     // Zips from different folders: the paths start from the folder they share.
     let folder = zips.iter().fold(folder, |f, z| f.ancestors().find(|a| z.starts_with(a)).map(Path::to_path_buf).unwrap_or_default());
     ctx.message("Looking inside the zip files…");
-    scan_paths(known, journey_root, &folder, zips, opts, ctx)
+    let rules = crate::rules::RuleSet::choose(&folder, &opts.rules)?;
+    scan_paths(known, journey_root, &folder, zips, opts, rules.as_ref(), ctx)
 }
 
-fn scan_paths(known: &Known, journey_root: &Path, folder: &Path, paths: &[PathBuf], opts: ScanOptions, ctx: &JobContext) -> Result<Plan> {
+fn scan_paths(known: &Known, journey_root: &Path, folder: &Path, paths: &[PathBuf], opts: ScanOptions, rules: Option<&crate::rules::RuleSet>, ctx: &JobContext) -> Result<Plan> {
     let (mut files, found) = crate::import::gather_all(paths, journey_root, ctx, true)?;
     let (zips, jsons): (Vec<PathBuf>, Vec<PathBuf>) = found.into_iter().partition(|p| crate::takeout_zip::is_zip(p));
     // Zips (a Google Takeout comes as several) are read where they are.
@@ -548,6 +566,10 @@ fn scan_paths(known: &Known, journey_root: &Path, folder: &Path, paths: &[PathBu
     let files: Vec<PathBuf> = files
         .into_iter()
         .filter(|p| {
+            // The folder's own rules file is read, not brought in.
+            if p.file_name().is_some_and(|n| n.to_string_lossy().eq_ignore_ascii_case(crate::rules::FOLDER_FILE)) {
+                return false;
+            }
             let edited = crate::takeout::is_edited_copy(p, &all);
             if edited {
                 ctx.skip(p.display().to_string(), "An edited copy saved by Google Photos; the original beside it is brought in.");
@@ -578,6 +600,8 @@ fn scan_paths(known: &Known, journey_root: &Path, folder: &Path, paths: &[PathBu
         }
     }
     let mut rows = Vec::new();
+    let mut coverage = rules.map(crate::rules::Coverage::new);
+    let knows = |n: &str| !known.matches(n).is_empty();
     ctx.message("Analyzing content…");
     ctx.set_total(files.len() as u64);
     for p in &files {
@@ -592,8 +616,22 @@ fn scan_paths(known: &Known, journey_root: &Path, folder: &Path, paths: &[PathBu
         segments.insert(0, base_name.clone());
         let file_name = segments.last().cloned().unwrap_or_default();
         let google = sidecars.get(p).and_then(|j| crate::takeout::read(j));
+        // Import rules run on the path below the chosen folder.
+        let mut ruled = rules.map(|set| set.apply(&segments[1..], &knows));
         let mut date = None;
+        if let Some(o) = &ruled {
+            if let Some(d) = o.fields.get("date") {
+                let n = o.date_rule.as_deref().and_then(|r| r.split_once(". ")).map(|(n, _)| n.to_string());
+                date = Some((d.clone(), n.map(|n| format!("import rule {n}")).unwrap_or_else(|| "import rules".into())));
+            }
+        }
+        // Without a date from the rules, dates in names as before (none
+        // when a file rule caught the file and gave no date).
+        let caught = ruled.as_ref().is_some_and(|o| o.caught_by_file || o.date_rule.is_some());
         for (i, seg) in segments.iter().enumerate().rev() {
+            if date.is_some() || caught {
+                break;
+            }
             let text = if i == segments.len() - 1 { stem_of(seg).to_string() } else { seg.clone() };
             if let Some(d) = name_date(&text) {
                 let source = if i == segments.len() - 1 { "file name".to_string() } else { format!("folder \u{201c}{seg}\u{201d}") };
@@ -607,8 +645,21 @@ fn scan_paths(known: &Known, journey_root: &Path, folder: &Path, paths: &[PathBu
                 date = Some((d, "Google Photos".into()));
             }
         }
-        if kind == "picture" && (date.is_none() || opts.photo_dates_first) && !in_zip.contains(p) {
-            if let Some(d) = crate::import::picture_details(p).date {
+        let photo_ok = ruled.as_ref().is_none_or(|o| o.photo_date);
+        let needs_photo = ruled.as_ref().is_some_and(|o| o.era.is_some() || o.fields.get("memory").is_some_and(|m| m.contains("{photo day}")));
+        let photo = if kind == "picture" && photo_ok && (date.is_none() || opts.photo_dates_first || needs_photo) && !in_zip.contains(p) {
+            crate::import::picture_details(p).date
+        } else {
+            None
+        };
+        if let (Some(set), Some(o)) = (rules, ruled.as_mut()) {
+            set.finish(o, photo.as_deref());
+            if o.date_rule.as_deref() == Some("later photo") {
+                date = o.fields.get("date").map(|d| (d.clone(), "import rules (a later photo of an earlier time)".into()));
+            }
+        }
+        if let Some(d) = photo {
+            if (date.is_none() || opts.photo_dates_first) && ruled.as_ref().is_none_or(|o| o.date_rule.as_deref() != Some("later photo")) {
                 date = Some((d, "photo facts".into()));
             }
         }
@@ -643,8 +694,36 @@ fn scan_paths(known: &Known, journey_root: &Path, folder: &Path, paths: &[PathBu
                 people.push(n);
             }
         }
-        let note = notes.join(" ");
+        let mut note = notes.join(" ");
         let folder_name = if segments.len() > 2 { segments[segments.len() - 2].clone() } else { String::new() };
+        let mut place = place;
+        let (mut family, mut series, mut photo_by, mut rule, mut memory, mut story) = (String::new(), String::new(), String::new(), String::new(), String::new(), None);
+        if let Some(o) = &ruled {
+            let f = |k: &str| o.fields.get(k).cloned().unwrap_or_default();
+            // Whoever took or gave the pictures is credited, not in them.
+            if let Some(by) = o.fields.get("photo_by") {
+                people.retain(|p| p.split_whitespace().next().is_none_or(|w| !w.eq_ignore_ascii_case(by)) && !p.eq_ignore_ascii_case(by));
+            }
+            for n in &o.people {
+                if !people.iter().any(|p| norm(p) == norm(n) || known.matches(n).iter().any(|m| norm(&m.1) == norm(p))) {
+                    people.push(n.clone());
+                }
+            }
+            if !f("place").is_empty() {
+                place = Some(f("place"));
+            }
+            (family, series, photo_by, memory) = (f("family"), f("series"), f("photo_by"), f("memory"));
+            if o.fields.contains_key("story") {
+                story = Some(f("story"));
+            }
+            if !f("note").is_empty() {
+                note = [note, f("note")].into_iter().filter(|s| !s.is_empty()).collect::<Vec<_>>().join(" ");
+            }
+            rule = o.rules.join("; ");
+            if let Some(c) = coverage.as_mut() {
+                c.add(&rel, o);
+            }
+        }
         rows.push(PlanRow {
             include: true,
             title: guess_title(&rel),
@@ -652,7 +731,7 @@ fn scan_paths(known: &Known, journey_root: &Path, folder: &Path, paths: &[PathBu
             date_source: date.map(|d| d.1).unwrap_or_default(),
             people: people.join("; "),
             place: place.unwrap_or_default(),
-            story: if opts.story_per_folder { folder_name.clone() } else { String::new() },
+            story: story.unwrap_or_else(|| if opts.story_per_folder { folder_name.clone() } else { String::new() }),
             description: descriptions
                 .get(&p.with_extension(""))
                 .cloned()
@@ -661,7 +740,11 @@ fn scan_paths(known: &Known, journey_root: &Path, folder: &Path, paths: &[PathBu
             kind,
             note,
             file: rel,
-            memory: String::new(),
+            memory,
+            family,
+            series,
+            photo_by,
+            rule,
             group: String::new(),
             people_note: String::new(),
             latitude: located.map(|l| l.0),
@@ -673,7 +756,10 @@ fn scan_paths(known: &Known, journey_root: &Path, folder: &Path, paths: &[PathBu
         ctx.advance_item(file_name);
     }
     suggest_groups(&mut rows);
-    let mut plan = Plan { base: folder.display().to_string(), rows, names: vec![], places: vec![] };
+    if let Some(c) = coverage.as_mut() {
+        c.done();
+    }
+    let mut plan = Plan { base: folder.display().to_string(), rows, names: vec![], places: vec![], coverage };
     check_names(&mut plan, known);
     check_places(&mut plan, known, true);
     Ok(plan)
@@ -709,7 +795,8 @@ pub fn suggest_groups(rows: &mut [PlanRow]) {
 // ------------------------------------------------------------ CSV
 
 /// The plan's columns, in order (blank sample and saved plans alike).
-pub const COLUMNS: [&str; 9] = ["file", "include", "title", "date", "people", "place", "memory", "story", "description"];
+pub const COLUMNS: [&str; 13] =
+    ["file", "include", "title", "date", "people", "place", "memory", "story", "description", "family", "series", "photo_by", "rule"];
 
 fn csv_field(s: &str) -> String {
     if s.contains([',', ';', '"', '\n', '\r']) || s.starts_with(' ') || s.ends_with(' ') {
@@ -728,7 +815,21 @@ pub fn to_csv(plan: &Plan, csv_path: &Path) -> String {
     out.push_str("\r\n");
     for r in &plan.rows {
         let file = rel_path(dir, &resolve(&plan.base, &r.file));
-        let cells: [&str; 9] = [&file, if r.include { "yes" } else { "no" }, &r.title, &r.date, &r.people, &r.place, &r.memory, &r.story, &r.description];
+        let cells: [&str; 13] = [
+            &file,
+            if r.include { "yes" } else { "no" },
+            &r.title,
+            &r.date,
+            &r.people,
+            &r.place,
+            &r.memory,
+            &r.story,
+            &r.description,
+            &r.family,
+            &r.series,
+            &r.photo_by,
+            &r.rule,
+        ];
         out.push_str(&cells.iter().map(|c| csv_field(c)).collect::<Vec<_>>().join(","));
         out.push_str("\r\n");
     }
@@ -819,6 +920,10 @@ pub fn from_csv(text: &str, csv_path: &Path) -> Result<Plan> {
             memory: get("memory"),
             story: get("story"),
             description: get("description"),
+            family: get("family"),
+            series: get("series"),
+            photo_by: [get("photo_by"), get("photo by")].into_iter().find(|s| !s.is_empty()).unwrap_or_default(),
+            rule: get("rule"),
             kind,
             note,
             file,
@@ -828,7 +933,7 @@ pub fn from_csv(text: &str, csv_path: &Path) -> Result<Plan> {
         });
     }
     suggest_groups(&mut rows);
-    Ok(Plan { base, rows, names: vec![], places: vec![] })
+    Ok(Plan { base, rows, names: vec![], places: vec![], coverage: None })
 }
 
 /// A blank import plan to fill in, with sample rows from the Rowan family,
@@ -860,6 +965,7 @@ pub fn sample_plan() -> (String, String) {
             .collect(),
         names: vec![],
         places: vec![],
+        coverage: None,
     };
     let csv = to_csv(&plan, Path::new("import-plan.csv"));
     let readme = "\
@@ -890,6 +996,16 @@ memory       Blank: the file becomes its own memory. Rows with the same text
 story        A story to put the memory in. A story that doesn't exist yet is
              made.
 description  A few words about the memory.
+family       A family the memory's people belong to. People whose first name
+             is in the family's name become members (\"Walter and June
+             family\"). A new family is only made if you tick \"Add people and
+             places that are not in this Journey yet\".
+series       The file's number in a series (14, 27c): the files in a memory
+             are put in this order.
+photo_by     Who took or gave the pictures. Added to the memory's
+             description, never to its people.
+rule         Which import rules filled the row in (for your information;
+             not used when bringing in).
 
 The app makes its own copies; the files named here are only read, never
 changed. Files already in the Journey are not copied again, so running the
@@ -988,6 +1104,10 @@ struct Group {
     people: Vec<String>,
     descriptions: Vec<String>,
     contents: Vec<(String, String)>,
+    /// Each content's series number, in the same order.
+    series: Vec<String>,
+    family: String,
+    photo_by: Vec<String>,
 }
 
 impl Journey {
@@ -1052,7 +1172,18 @@ impl Journey {
                     Some(i) => *i,
                     None => {
                         let title = [r.memory.trim(), r.title.trim()].into_iter().find(|t| !t.is_empty()).map(str::to_string).unwrap_or_else(|| guess_title(&r.file));
-                        groups.push(Group { title, date: String::new(), place: String::new(), story: String::new(), people: vec![], descriptions: vec![], contents: vec![] });
+                        groups.push(Group {
+                            title,
+                            date: String::new(),
+                            place: String::new(),
+                            story: String::new(),
+                            people: vec![],
+                            descriptions: vec![],
+                            contents: vec![],
+                            series: vec![],
+                            family: String::new(),
+                            photo_by: vec![],
+                        });
                         if !key.is_empty() {
                             by_name.insert(key, groups.len() - 1);
                         }
@@ -1061,7 +1192,11 @@ impl Journey {
                 };
                 let g = &mut groups[at];
                 g.contents.push((id.clone(), kind.clone()));
-                for (field, value) in [(&mut g.date, &r.date), (&mut g.place, &r.place), (&mut g.story, &r.story)] {
+                g.series.push(r.series.trim().to_string());
+                if !r.photo_by.trim().is_empty() && !g.photo_by.contains(&r.photo_by.trim().to_string()) {
+                    g.photo_by.push(r.photo_by.trim().to_string());
+                }
+                for (field, value) in [(&mut g.date, &r.date), (&mut g.place, &r.place), (&mut g.story, &r.story), (&mut g.family, &r.family)] {
                     if field.is_empty() {
                         *field = value.trim().to_string();
                     }
@@ -1092,11 +1227,25 @@ impl Journey {
             }
             // People added for a name chosen as "new", once each.
             let mut added: HashMap<String, String> = HashMap::new();
+            // Families found or made, by name.
+            let mut families: HashMap<String, Option<String>> = HashMap::new();
+            for g in &mut groups {
+                // Files numbered in a series go in its order; the rest after them.
+                if g.series.iter().any(|s| !s.is_empty()) {
+                    let mut both: Vec<((String, String), String)> = g.contents.drain(..).zip(g.series.drain(..)).collect();
+                    both.sort_by_key(|(_, s)| series_key(s));
+                    (g.contents, g.series) = both.into_iter().unzip();
+                }
+                if !g.photo_by.is_empty() {
+                    g.descriptions.push(format!("Pictures from {}.", g.photo_by.join(", ")));
+                }
+            }
             for g in &groups {
                 let id = crate::memories::create_memory(a, &g.title)?;
                 for (c, _) in &g.contents {
                     crate::memories::put_in(a, &id, c)?;
                 }
+                let mut in_memory: Vec<String> = Vec::new();
                 crate::memories::refresh_status(a, &id)?;
                 match dates::parse(&g.date) {
                     Ok(Some(d)) => {
@@ -1184,6 +1333,48 @@ impl Journey {
                     if !taken {
                         a.insert("memory_individual", crate::import::row(json!({"memory_id": id, "individual_id": who, "role": role, "certainty": "certain"})))?;
                     }
+                    in_memory.push(who);
+                }
+                if !g.family.is_empty() {
+                    let key = norm(&g.family);
+                    let family = match families.get(&key) {
+                        Some(f) => f.clone(),
+                        None => {
+                            let found = find_by_name(a.conn(), "family", &g.family)?;
+                            let f = match found.as_slice() {
+                                [one] => Some(one.clone()),
+                                [] if add_missing => Some(a.create("family", crate::import::row(json!({"name": g.family})))?),
+                                [] => {
+                                    note(format!("The family \u{201c}{}\u{201d} is not in this Journey, so it was left out.", g.family));
+                                    None
+                                }
+                                _ => {
+                                    note(format!("More than one family is called \u{201c}{}\u{201d}, so it was left out.", g.family));
+                                    None
+                                }
+                            };
+                            families.insert(key.clone(), f.clone());
+                            f
+                        }
+                    };
+                    // People whose first name is in the family's name are its members.
+                    if let Some(f) = family {
+                        for who in &in_memory {
+                            let name: String = a.conn().query_row("SELECT name FROM individual WHERE id = ?1", [who], |r| r.get(0))?;
+                            let first = name.split_whitespace().next().map(norm).unwrap_or_default();
+                            if first.trim().is_empty() || !key.contains(first.as_str()) {
+                                continue;
+                            }
+                            let there: bool = a.conn().query_row(
+                                "SELECT EXISTS(SELECT 1 FROM family_member WHERE family_id = ?1 AND individual_id = ?2)",
+                                [&f, who],
+                                |r| r.get(0),
+                            )?;
+                            if !there {
+                                a.insert("family_member", crate::import::row(json!({"family_id": f, "individual_id": who})))?;
+                            }
+                        }
+                    }
                 }
                 if !g.story.is_empty() {
                     let key = g.story.to_lowercase();
@@ -1218,6 +1409,16 @@ impl Journey {
             return Err(e);
         }
         Ok(report)
+    }
+}
+
+/// A series number in order: `2` before `10`, `27b` after `27a`; blank last.
+fn series_key(s: &str) -> (u8, u64, String) {
+    let digits: String = s.chars().take_while(|c| c.is_ascii_digit()).collect();
+    match digits.parse::<u64>() {
+        Ok(n) => (0, n, s[digits.len()..].to_lowercase()),
+        Err(_) if s.is_empty() => (2, 0, String::new()),
+        Err(_) => (1, 0, s.to_lowercase()),
     }
 }
 
